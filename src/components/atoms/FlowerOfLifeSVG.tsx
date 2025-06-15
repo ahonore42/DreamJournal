@@ -11,81 +11,87 @@ import Animated, {
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 /**
- * Flower of Life SVG component with an outward-rippling color animation.
+ * Flower of Life SVG component with a smooth outward-rippling color animation.
  *
  * @param {object} props - The component props.
  * @param {number} props.size - The overall size (width and height) of the SVG.
- * @param {string} props.strokeColor - The starting color for the current animation cycle (the color the flower currently is).
- * @param {string} props.nextStrokeColor - The ending color for the current animation cycle (the color the flower should animate to).
+ * @param {string} props.strokeColor - The starting color for the current animation cycle.
+ * @param {string} props.nextStrokeColor - The ending color for the current animation cycle.
  * @param {number} props.strokeWidth - The stroke width for the circles.
  * @param {number} props.glowOpacity - The opacity for the petal glow effect.
- * @param {boolean} [props.triggerRipple=false] - A boolean flag to explicitly trigger the ripple animation.
+ * @param {boolean} [props.triggerRipple=false] - A boolean flag to trigger the ripple animation.
  */
 export const FlowerOfLifeSVG: React.FC<{
   size: number;
   strokeColor: string;
   strokeWidth: number;
   glowOpacity: number;
+  transitionTimeout: number; // Main ripple duration
   nextStrokeColor?: string;
   triggerRipple?: boolean;
-}> = ({ size, strokeColor, strokeWidth, glowOpacity, nextStrokeColor = strokeColor, triggerRipple = false }) => {
+}> = ({
+  size,
+  strokeColor,
+  strokeWidth,
+  glowOpacity,
+  transitionTimeout,
+  nextStrokeColor = strokeColor,
+  triggerRipple = false,
+}) => {
   const centerX = size / 2;
   const centerY = size / 2;
-  // Radius of individual circles forming the pattern
   const radius = size / 6.5;
 
-  const RIPPLE_DURATION = 800; // Milliseconds for the main ripple effect (inner petals)
-  const BOUNDARY_TRANSITION_DURATION = 300; // Milliseconds for the boundary fade *after* ripple
+  const BOUNDARY_START_DELAY = transitionTimeout / 2; // Start boundary animation 400ms into the ripple
+  const BOUNDARY_DURATION = transitionTimeout * (3 / 4); // Longer duration for smooth boundary transition
 
-  // This shared value controls the overall ripple animation progress from 0 to 1.
+  // Shared values for petal animation
   const rippleProgress = useSharedValue(0);
-
-  // These shared values store the *actual* from and to colors for the *currently active* animation of the petals.
   const animatedActualFromColor = useSharedValue(strokeColor);
   const animatedActualToColor = useSharedValue(nextStrokeColor);
 
-  // Shared value for the boundary circle's color. Initialize it with the current strokeColor.
-  const animatedBoundaryColor = useSharedValue(strokeColor);
+  // Separate shared value for boundary animation progress (0 to 1)
+  const boundaryProgress = useSharedValue(0);
 
   interface Petal {
     x: number;
     y: number;
     angle: number;
-    distance: number; // Pre-calculate distance from the center for ripple staggering
+    distance: number;
   }
 
-  // Helper function to get intersection points of two circles.
+  // Helper function to get intersection points of two circles
   const getIntersection = (circle1: Petal, circle2: Petal, r: number) => {
     const dx = circle2.x - circle1.x;
     const dy = circle2.y - circle1.y;
     const d = Math.sqrt(dx * dx + dy * dy);
 
-    if (d > (r + r) || d < Math.abs(r - r)) {
+    if (d > r + r || d < Math.abs(r - r)) {
       return null;
     }
 
-    const a = ((r * r) - (r * r) + (d * d)) / (2.0 * d);
-    const x2 = circle1.x + (dx * a / d);
-    const y2 = circle1.y + (dy * a / d);
-    const h = Math.sqrt((r * r) - (a * a));
+    const a = (r * r - r * r + d * d) / (2.0 * d);
+    const x2 = circle1.x + (dx * a) / d;
+    const y2 = circle1.y + (dy * a) / d;
+    const h = Math.sqrt(r * r - a * a);
     const rx = -dy * (h / d);
     const ry = dx * (h / d);
 
     return {
       x: x2 - rx,
-      y: y2 - ry
+      y: y2 - ry,
     };
   };
 
-  // Helper to get angle from the center.
+  // Helper to get angle from the center
   const getPetalAngle = (x: number, y: number) => {
     let theta = Math.atan2(y - centerY, x - centerX);
-    theta *= 180 / Math.PI; // Convert to degrees
-    if (theta < 0) theta = 360 + theta; // Ensure positive angle
+    theta *= 180 / Math.PI;
+    if (theta < 0) theta = 360 + theta;
     return Math.round(theta);
   };
 
-  // Generates the centers of the circles that form the Flower of Life pattern.
+  // Generate the centers of circles forming the Flower of Life pattern
   const generatePetals = (): Petal[] => {
     const allPetals: Petal[] = [];
     let firstIntersectionIndex = 0;
@@ -99,7 +105,7 @@ export const FlowerOfLifeSVG: React.FC<{
           x: centerX,
           y: centerY,
           angle: getPetalAngle(centerX, centerY),
-          distance: 0 // Center petal has 0 distance
+          distance: 0,
         };
         allPetals.push(petal);
         currentPetalCount++;
@@ -115,13 +121,13 @@ export const FlowerOfLifeSVG: React.FC<{
             x,
             y,
             angle: getPetalAngle(x, y),
-            distance: Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2)
+            distance: Math.sqrt((x - centerX) ** 2 + (y - centerY) ** 2),
           };
         } else if (allPetals[currentPetalCount - 1] && allPetals[firstIntersectionIndex]) {
           const intersectionCoords = getIntersection(
             allPetals[currentPetalCount - 1],
             allPetals[firstIntersectionIndex],
-            radius
+            radius,
           );
 
           if (intersectionCoords) {
@@ -129,7 +135,9 @@ export const FlowerOfLifeSVG: React.FC<{
               x: intersectionCoords.x,
               y: intersectionCoords.y,
               angle: getPetalAngle(intersectionCoords.x, intersectionCoords.y),
-              distance: Math.sqrt((intersectionCoords.x - centerX) ** 2 + (intersectionCoords.y - centerY) ** 2)
+              distance: Math.sqrt(
+                (intersectionCoords.x - centerX) ** 2 + (intersectionCoords.y - centerY) ** 2,
+              ),
             };
           }
         }
@@ -146,7 +154,7 @@ export const FlowerOfLifeSVG: React.FC<{
             firstIntersectionIndex++;
           }
         } else {
-            continue;
+          continue;
         }
       }
     }
@@ -154,66 +162,60 @@ export const FlowerOfLifeSVG: React.FC<{
   };
 
   const allPetals = useRef<Petal[]>(generatePetals()).current;
-  const maxDistance = allPetals.length > 0 ? Math.max(...allPetals.map(p => p.distance)) : 1;
+  const maxDistance = allPetals.length > 0 ? Math.max(...allPetals.map((p) => p.distance)) : 1;
   const patternRadius = radius * 2.2;
-  const innerBoundaryRadius = patternRadius + radius + (radius * 0.01);
+  const innerBoundaryRadius = patternRadius + radius + radius * 0.01;
 
-  // This useEffect is the core animation controller for FlowerOfLifeSVG.
-  // It synchronizes with the `triggerRipple` prop and the color changes.
+  // Main animation controller with smooth boundary transition
   useEffect(() => {
     const targetColorForAnimation = nextStrokeColor || strokeColor;
 
     if (triggerRipple && strokeColor !== targetColorForAnimation) {
-      // 1. Set the initial 'from' and 'to' colors for the petal ripple animation.
+      // 1. Set the initial colors for petal animation
       animatedActualFromColor.value = strokeColor;
       animatedActualToColor.value = targetColorForAnimation;
 
-      // Ensure the boundary color starts from the current `strokeColor` for this cycle,
-      // and will only animate *after* the delay.
-      animatedBoundaryColor.value = strokeColor; // Initialize before the delayed animation.
+      // 2. Reset progress values
+      rippleProgress.value = 0;
+      boundaryProgress.value = 0;
 
-      // 2. Start the petal ripple animation (0 to 1).
-      rippleProgress.value = 0; // Reset to ensure animation starts from beginning
-      rippleProgress.value = withTiming(1, { duration: RIPPLE_DURATION }, (finished) => {
-        if (finished) {
-          // Once the petal ripple is complete, fix the internal petal colors to the target.
-          animatedActualFromColor.value = targetColorForAnimation;
-          // Reset ripple progress for the next animation cycle.
-          rippleProgress.value = withTiming(0, { duration: 0 });
+      // 3. Start petal ripple animation
+      rippleProgress.value = withTiming(1, { duration: transitionTimeout });
 
-          // NOW, after the petal ripple finishes, start the boundary color transition.
-          animatedBoundaryColor.value = withTiming(targetColorForAnimation, { duration: BOUNDARY_TRANSITION_DURATION });
-        }
-      });
-
+      // 4. Start boundary animation with delay, overlapping with petal animation
+      boundaryProgress.value = withDelay(
+        BOUNDARY_START_DELAY,
+        withTiming(1, { duration: BOUNDARY_DURATION }),
+      );
     } else if (!triggerRipple) {
-      // 3. If no ripple is triggered (initial render or state has settled):
-      //    Ensure all elements (petals and boundary) are immediately set to the `strokeColor`.
+      // No ripple: set all elements to current strokeColor immediately
       animatedActualFromColor.value = strokeColor;
       animatedActualToColor.value = strokeColor;
-      // When not triggering a ripple, the boundary should immediately reflect the strokeColor.
-      animatedBoundaryColor.value = strokeColor;
-      rippleProgress.value = withTiming(0, { duration: 0 }); // Ensure no lingering animation progress
+      rippleProgress.value = withTiming(0, { duration: 0 });
+      boundaryProgress.value = withTiming(0, { duration: 0 });
     }
-  }, [triggerRipple, strokeColor, nextStrokeColor]); // Re-run this effect when these props change.
+  }, [triggerRipple, strokeColor, nextStrokeColor]);
 
-  // Creates the animated properties for each individual petal.
+  // Creates animated properties for each petal with staggered timing
   const createPetalProps = (petal: Petal) => {
     return useAnimatedProps(() => {
       const normalizedDistance = maxDistance === 0 ? 0 : petal.distance / maxDistance;
-      const rippleStartSpreadFactor = 0.6; // How much of the total duration is used to spread start times
-      const individualPetalDurationFactor = 0.4; // How much of the total duration each petal's color transition takes
+      const rippleStartSpreadFactor = 0.6;
+      const individualPetalDurationFactor = 0.4;
 
       const petalAnimationStartPoint = normalizedDistance * rippleStartSpreadFactor;
       const currentPetalProgress = Math.max(
         0,
-        Math.min(1, (rippleProgress.value - petalAnimationStartPoint) / individualPetalDurationFactor)
+        Math.min(
+          1,
+          (rippleProgress.value - petalAnimationStartPoint) / individualPetalDurationFactor,
+        ),
       );
 
       const interpolatedPetalColor = interpolateColor(
         currentPetalProgress,
         [0, 1],
-        [animatedActualFromColor.value, animatedActualToColor.value]
+        [animatedActualFromColor.value, animatedActualToColor.value],
       );
 
       return {
@@ -222,6 +224,19 @@ export const FlowerOfLifeSVG: React.FC<{
       };
     });
   };
+
+  // Smooth boundary animation using interpolateColor
+  const boundaryAnimatedProps = useAnimatedProps(() => {
+    const interpolatedBoundaryColor = interpolateColor(
+      boundaryProgress.value,
+      [0, 1],
+      [strokeColor, nextStrokeColor || strokeColor],
+    );
+
+    return {
+      stroke: interpolatedBoundaryColor,
+    };
+  });
 
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
@@ -246,7 +261,7 @@ export const FlowerOfLifeSVG: React.FC<{
         ))}
       </G>
 
-      {/* Boundary circle. Its color is now animated independently after a delay. */}
+      {/* Boundary circle with smooth delayed animation */}
       <AnimatedCircle
         cx={centerX}
         cy={centerY}
@@ -254,11 +269,7 @@ export const FlowerOfLifeSVG: React.FC<{
         strokeWidth={strokeWidth + 1}
         fill="none"
         opacity={1}
-        animatedProps={useAnimatedProps(() => ({
-          // The boundary circle's stroke color directly uses the animated value,
-          // which will only change after the defined delay and duration.
-          stroke: animatedBoundaryColor.value,
-        }))}
+        animatedProps={boundaryAnimatedProps}
       />
     </Svg>
   );
