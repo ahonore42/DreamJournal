@@ -44,8 +44,6 @@ export const VoiceRecorder: React.FC = () => {
   const pulseAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
 
   const fadeOutButton = useCallback(() => {
-    console.log("VoiceRecorder: Explicitly fading out button and showing transcript.");
-
     Animated.parallel([
       Animated.timing(buttonOpacity, {
         toValue: 0,
@@ -69,26 +67,25 @@ export const VoiceRecorder: React.FC = () => {
       }),
     ]).start((finished) => {
       if (finished) {
-        console.log("VoiceRecorder: Button faded out. Resetting to cyan while invisible.");
-        buttonScale.setValue(1);
-        
         // Reset color while invisible
         setTimeout(() => {
           setForceButtonDefaultColor(true);
-          // REMOVED: setButtonKey - no re-mounting
         }, 50);
       }
     });
   }, [buttonOpacity, buttonScale, transcriptOpacity, transcriptTranslateY]);
 
   const fadeInButton = useCallback(() => {
-    console.log("VoiceRecorder: Explicitly fading in button and hiding transcript.");
-
     // Reset force flag before fading in
     setForceButtonDefaultColor(false);
 
     Animated.parallel([
       Animated.timing(buttonOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonScale, {
         toValue: 1,
         duration: 600,
         useNativeDriver: true,
@@ -103,32 +100,27 @@ export const VoiceRecorder: React.FC = () => {
         duration: 400,
         useNativeDriver: true,
       }),
-    ]).start();
-  }, [buttonOpacity, transcriptOpacity, transcriptTranslateY]);
+    ]).start()
+  }, [buttonOpacity, buttonScale, transcriptOpacity, transcriptTranslateY]);
 
   const handleRecordingPress = () => {
-    console.log("VoiceRecorder: handleRecordingPress called, current isRecording:", isRecording);
-
     if (isRecording) {
-      console.log("VoiceRecorder: Stopping recording");
       stopRecording();
     } else if (!isTranscribing && !transcription) {
-      console.log("VoiceRecorder: Starting recording");
       startRecording();
     }
   };
 
   const handleClearRecording = () => {
-    console.log("VoiceRecorder: handleClearRecording called. Clearing and showing cyan button.");
-
     clearRecording();
     setForceButtonDefaultColor(true);
-    
+
     // Reset hasFadedOutRef
     hasFadedOutRef.current = false;
 
-    // Set initial hidden state immediately
+    // Set initial hidden state immediately (button should be at scale 0.8 when hidden)
     buttonOpacity.setValue(0);
+    buttonScale.setValue(0.8);
     transcriptOpacity.setValue(1);
     transcriptTranslateY.setValue(0);
 
@@ -143,16 +135,12 @@ export const VoiceRecorder: React.FC = () => {
     return !!transcription && !isTranscribing;
   }, [transcription, isTranscribing]);
 
-  // Breathing animation - ensure it works with re-renders
+  // Breathing animation
   useEffect(() => {
-    console.log("VoiceRecorder: Breathing effect triggered, isRecording:", isRecording);
-    
     if (isRecording) {
-      console.log("VoiceRecorder: Starting breathing animation");
-      
       // Reset to starting value
       breathingAnim.setValue(1);
-      
+
       // Create the breathing animation
       breathingAnimationRef.current = Animated.loop(
         Animated.sequence([
@@ -166,13 +154,12 @@ export const VoiceRecorder: React.FC = () => {
             duration: 3000,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
-      
+
       breathingAnimationRef.current.start();
 
       return () => {
-        console.log("VoiceRecorder: Stopping breathing animation");
         if (breathingAnimationRef.current) {
           breathingAnimationRef.current.stop();
           breathingAnimationRef.current = null;
@@ -180,7 +167,6 @@ export const VoiceRecorder: React.FC = () => {
         breathingAnim.setValue(1);
       };
     } else {
-      console.log("VoiceRecorder: Resetting breathing to 1");
       if (breathingAnimationRef.current) {
         breathingAnimationRef.current.stop();
         breathingAnimationRef.current = null;
@@ -192,11 +178,9 @@ export const VoiceRecorder: React.FC = () => {
   // Pulse animation
   useEffect(() => {
     if (isTranscribing) {
-      console.log("VoiceRecorder: Starting pulse animation");
-      
       // Reset to starting value
       pulseAnim.setValue(1);
-      
+
       pulseAnimationRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
@@ -209,11 +193,11 @@ export const VoiceRecorder: React.FC = () => {
             duration: 1500,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
-      
+
       pulseAnimationRef.current.start();
-      
+
       return () => {
         if (pulseAnimationRef.current) {
           pulseAnimationRef.current.stop();
@@ -449,6 +433,7 @@ export const VoiceRecorder: React.FC = () => {
             styles.recordingArea,
             {
               opacity: buttonOpacity,
+              transform: [{ scale: buttonScale }],
             },
           ]}
           pointerEvents={isButtonTrulyDisabled ? "none" : "auto"}
