@@ -245,8 +245,8 @@ export const VoiceRecorder: React.FC = () => {
                 style={[
                   styles.transcriptionTitle,
                   {
-                    color: colors.accent,
-                    textShadowColor: colors.accent,
+                    color: colors.secondary,
+                    textShadowColor: colors.secondary,
                     textShadowOffset: { width: 0, height: 0 },
                     textShadowRadius: 8,
                   },
@@ -262,7 +262,7 @@ export const VoiceRecorder: React.FC = () => {
                       styles.transcribingText,
                       {
                         color: colors.text,
-                        textShadowColor: colors.tint,
+                        textShadowColor: colors.primary,
                         textShadowOffset: { width: 0, height: 0 },
                         textShadowRadius: 4,
                       },
@@ -278,7 +278,7 @@ export const VoiceRecorder: React.FC = () => {
                       styles.dreamText,
                       {
                         color: colors.text,
-                        textShadowColor: colors.accent,
+                        textShadowColor: colors.secondary,
                         textShadowOffset: { width: 0, height: 0 },
                         textShadowRadius: 3,
                       },
@@ -307,8 +307,8 @@ export const VoiceRecorder: React.FC = () => {
               style={[
                 styles.playButton,
                 {
-                  backgroundColor: colors.tint,
-                  shadowColor: colors.tint,
+                  backgroundColor: colors.primary,
+                  shadowColor: colors.primary,
                   shadowOffset: { width: 0, height: 4 },
                   shadowOpacity: 0.3,
                   shadowRadius: 8,
@@ -324,8 +324,8 @@ export const VoiceRecorder: React.FC = () => {
               style={[
                 styles.clearButton,
                 {
-                  borderColor: colors.accent,
-                  shadowColor: colors.accent,
+                  borderColor: colors.secondary,
+                  shadowColor: colors.secondary,
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.2,
                   shadowRadius: 4,
@@ -338,8 +338,8 @@ export const VoiceRecorder: React.FC = () => {
                 style={[
                   styles.clearButtonText,
                   {
-                    color: colors.accent,
-                    textShadowColor: colors.accent,
+                    color: colors.secondary,
+                    textShadowColor: colors.secondary,
                     textShadowOffset: { width: 0, height: 0 },
                     textShadowRadius: 2,
                   },
@@ -378,8 +378,8 @@ export const VoiceRecorder: React.FC = () => {
             style={[
               styles.status,
               {
-                color: colors.tint,
-                textShadowColor: colors.tint,
+                color: colors.primary,
+                textShadowColor: colors.primary,
                 textShadowOffset: { width: 0, height: 0 },
                 textShadowRadius: 6,
               },
@@ -400,7 +400,7 @@ export const VoiceRecorder: React.FC = () => {
                 styles.hint,
                 {
                   color: colors.text,
-                  textShadowColor: colors.accent,
+                  textShadowColor: colors.secondary,
                   textShadowOffset: { width: 0, height: 0 },
                   textShadowRadius: 2,
                 },
@@ -416,7 +416,7 @@ export const VoiceRecorder: React.FC = () => {
                 styles.duration,
                 {
                   color: colors.text,
-                  textShadowColor: colors.accent,
+                  textShadowColor: colors.secondary,
                   textShadowOffset: { width: 0, height: 0 },
                   textShadowRadius: 2,
                 },
