@@ -1,0 +1,218 @@
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { View, StyleSheet, Animated, TouchableOpacity } from "react-native";
+import Colors from "@/constants/Colors";
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { FlowerOfLifeSVG } from "../atoms/FlowerOfLifeSVG";
+
+/**
+ * Sacred Recording Button Component.
+ * Manages button state, animation triggers, and passes color props to FlowerOfLifeSVG.
+ */
+export const SacredRecordingButton: React.FC<{
+  isRecording: boolean;
+  isTranscribing: boolean;
+  onPress: () => void;
+  breathingAnim: Animated.Value;
+  pulseAnim: Animated.Value;
+  containerScaleAnim: Animated.Value;
+  isButtonDisabled: boolean;
+  transcriptionExists: boolean;
+  forceDefaultColor?: boolean;
+}> = ({
+  isRecording,
+  isTranscribing,
+  onPress,
+  isButtonDisabled,
+  transcriptionExists,
+  forceDefaultColor = false,
+}) => {
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? "light"];
+
+  const [currentDisplayColor, setCurrentDisplayColor] = useState(colors.accent);
+  const [triggerRipple, setTriggerRipple] = useState(false);
+  
+  // Create a simple scale animation
+  const scaleValue = useRef(new Animated.Value(1)).current;
+
+  // Helper function to determine the target color based on the current state
+  const getTargetColor = useCallback(() => {
+    if (forceDefaultColor) return colors.accent;
+    if (isRecording) return colors.tint; // Purple
+    if (isTranscribing) return "#10B981"; // Emerald
+    if (transcriptionExists) return "#10B981"; // Emerald
+    return colors.accent; // Default cyan
+  }, [
+    isRecording,
+    isTranscribing,
+    transcriptionExists,
+    forceDefaultColor,
+    colors.accent,
+    colors.tint,
+  ]);
+
+  // Calculate button state styling
+  const getButtonState = useCallback(() => {
+    const baseState = {
+      glowIntensity: 0.7,
+      shadowOpacity: 0.5,
+      shadowRadius: 12,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 12,
+      backgroundColor: colorScheme === "dark" ? "#0A0A1A" : "#FFFFFF",
+    };
+
+    return {
+      ...baseState,
+      glowIntensity: isRecording ? 1.0 : isTranscribing ? 0.9 : 0.7,
+      shadowOpacity: isRecording ? 0.8 : isTranscribing ? 0.6 : 0.5,
+      shadowRadius: isRecording ? 20 : isTranscribing ? 16 : 12,
+      elevation: isRecording ? 20 : isTranscribing ? 16 : 12,
+      shadowColor: currentDisplayColor,
+      borderColor: currentDisplayColor,
+      backgroundColor: isRecording
+        ? colorScheme === "dark"
+          ? "#1A1A2E"
+          : "#F8F9FA"
+        : isTranscribing
+          ? colorScheme === "dark"
+            ? "#2A2A1A"
+            : "#FFFEF7"
+          : baseState.backgroundColor,
+    };
+  }, [isRecording, isTranscribing, currentDisplayColor, colorScheme]);
+
+  const buttonState = getButtonState();
+
+  // Simple scale animation that MUST work
+  useEffect(() => {
+    if (isRecording) {
+      // Force reset
+      scaleValue.setValue(1);
+      
+      // Create a simple animation
+      const anim = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scaleValue, {
+            toValue: 1.2, // Bigger scale to make it obvious
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scaleValue, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      
+      anim.start();
+      
+      // Log the animation values to debug
+      const listener = scaleValue.addListener(({ value }) => {
+        console.log("SCALE VALUE:", value);
+      });
+      
+      return () => {
+        anim.stop();
+        scaleValue.removeListener(listener);
+        scaleValue.setValue(1);
+      };
+    } else {
+      scaleValue.setValue(1);
+    }
+  }, [isRecording]);
+
+  // Handle color transitions
+  useEffect(() => {
+    // Handle forced color reset
+    if (forceDefaultColor) {
+      setCurrentDisplayColor(colors.accent);
+      setTriggerRipple(false);
+      return;
+    }
+
+    // Calculate target color
+    const targetColor = getTargetColor();
+
+    // Handle color transitions
+    if (targetColor !== currentDisplayColor) {
+      setTriggerRipple(true);
+      const timeoutId = setTimeout(() => {
+        setCurrentDisplayColor(targetColor);
+        setTriggerRipple(false);
+      }, 800);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setTriggerRipple(false);
+    }
+  }, [
+    isRecording,
+    isTranscribing,
+    currentDisplayColor,
+    transcriptionExists,
+    forceDefaultColor,
+    colors.accent,
+    getTargetColor,
+  ]);
+
+  return (
+    <View style={styles.sacredContainer}>
+      <Animated.View
+        style={[
+          styles.sacredButton,
+          {
+            backgroundColor: buttonState.backgroundColor,
+            borderColor: buttonState.borderColor,
+            shadowColor: buttonState.shadowColor,
+            shadowOpacity: buttonState.shadowOpacity,
+            shadowRadius: buttonState.shadowRadius,
+            shadowOffset: buttonState.shadowOffset,
+            elevation: buttonState.elevation,
+            transform: [{ scale: scaleValue }],
+          },
+        ]}
+      >
+        <TouchableOpacity
+          onPress={onPress}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={isRecording ? "Stop recording" : "Start recording"}
+          disabled={triggerRipple || isButtonDisabled}
+          style={styles.touchArea}
+        >
+          <FlowerOfLifeSVG
+            size={180}
+            strokeColor={currentDisplayColor}
+            nextStrokeColor={getTargetColor()}
+            strokeWidth={2}
+            glowOpacity={buttonState.glowIntensity}
+            triggerRipple={triggerRipple}
+          />
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  sacredContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sacredButton: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    borderWidth: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    position: "relative",
+  },
+  touchArea: {
+    width: "100%",
+    height: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});
