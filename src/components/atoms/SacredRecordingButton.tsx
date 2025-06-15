@@ -29,26 +29,30 @@ export const SacredRecordingButton: React.FC<{
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
 
-  const [currentDisplayColor, setCurrentDisplayColor] = useState(colors.accent);
+  const [currentDisplayColor, setCurrentDisplayColor] = useState(colors.primary);
+  const [containerBorderColor, setContainerBorderColor] = useState(colors.primary);
   const [triggerRipple, setTriggerRipple] = useState(false);
-  
+
   // Create a simple scale animation
   const scaleValue = useRef(new Animated.Value(1)).current;
+  const containerTimeoutRef = useRef<any>(null);
+
+  const TRANSITION_TIMEOUT = 500;
 
   // Helper function to determine the target color based on the current state
   const getTargetColor = useCallback(() => {
-    if (forceDefaultColor) return colors.accent;
-    if (isRecording) return colors.tint; // Purple
-    if (isTranscribing) return "#10B981"; // Emerald
-    if (transcriptionExists) return "#10B981"; // Emerald
-    return colors.accent; // Default cyan
+    if (forceDefaultColor) return colors.primary;
+    if (isRecording) return colors.accent;
+    if (isTranscribing) return colors.secondary;
+    if (transcriptionExists) return colors.secondary; 
+    return colors.primary;
   }, [
     isRecording,
     isTranscribing,
     transcriptionExists,
     forceDefaultColor,
+    colors.primary,
     colors.accent,
-    colors.tint,
   ]);
 
   // Calculate button state styling
@@ -69,7 +73,6 @@ export const SacredRecordingButton: React.FC<{
       shadowRadius: isRecording ? 20 : isTranscribing ? 16 : 12,
       elevation: isRecording ? 20 : isTranscribing ? 16 : 12,
       shadowColor: currentDisplayColor,
-      borderColor: currentDisplayColor,
       backgroundColor: isRecording
         ? colorScheme === "dark"
           ? "#1A1A2E"
@@ -89,7 +92,7 @@ export const SacredRecordingButton: React.FC<{
     if (isRecording) {
       // Force reset
       scaleValue.setValue(1);
-      
+
       // Create a simple animation
       const anim = Animated.loop(
         Animated.sequence([
@@ -103,16 +106,16 @@ export const SacredRecordingButton: React.FC<{
             duration: 2000,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       );
-      
+
       anim.start();
-      
+
       // Log the animation values to debug
       const listener = scaleValue.addListener(({ value }) => {
         console.log("SCALE VALUE:", value);
       });
-      
+
       return () => {
         anim.stop();
         scaleValue.removeListener(listener);
@@ -127,8 +130,13 @@ export const SacredRecordingButton: React.FC<{
   useEffect(() => {
     // Handle forced color reset
     if (forceDefaultColor) {
-      setCurrentDisplayColor(colors.accent);
+      setCurrentDisplayColor(colors.primary);
+      setContainerBorderColor(colors.primary);
       setTriggerRipple(false);
+      if (containerTimeoutRef.current) {
+        clearTimeout(containerTimeoutRef.current);
+        containerTimeoutRef.current = null;
+      }
       return;
     }
 
@@ -138,11 +146,28 @@ export const SacredRecordingButton: React.FC<{
     // Handle color transitions
     if (targetColor !== currentDisplayColor) {
       setTriggerRipple(true);
-      const timeoutId = setTimeout(() => {
+
+      // Clear any existing container timeout
+      if (containerTimeoutRef.current) {
+        clearTimeout(containerTimeoutRef.current);
+      }
+
+      // Start container border animation
+      containerTimeoutRef.current = setTimeout(() => {
+        setContainerBorderColor(targetColor);
+        containerTimeoutRef.current = null;
+      }, TRANSITION_TIMEOUT + 10); // Test with higher value
+
+      // Update FlowerOfLifeSVG color after 800ms (existing timing)
+      const flowerTimeoutId = setTimeout(() => {
         setCurrentDisplayColor(targetColor);
         setTriggerRipple(false);
-      }, 800);
-      return () => clearTimeout(timeoutId);
+      }, TRANSITION_TIMEOUT);
+
+      return () => {
+        clearTimeout(flowerTimeoutId);
+        // Container timeout managed by the ref
+      };
     } else {
       setTriggerRipple(false);
     }
@@ -152,7 +177,7 @@ export const SacredRecordingButton: React.FC<{
     currentDisplayColor,
     transcriptionExists,
     forceDefaultColor,
-    colors.accent,
+    colors.primary,
     getTargetColor,
   ]);
 
@@ -163,7 +188,7 @@ export const SacredRecordingButton: React.FC<{
           styles.sacredButton,
           {
             backgroundColor: buttonState.backgroundColor,
-            borderColor: buttonState.borderColor,
+            borderColor: containerBorderColor,
             shadowColor: buttonState.shadowColor,
             shadowOpacity: buttonState.shadowOpacity,
             shadowRadius: buttonState.shadowRadius,
@@ -188,6 +213,7 @@ export const SacredRecordingButton: React.FC<{
             strokeWidth={2}
             glowOpacity={buttonState.glowIntensity}
             triggerRipple={triggerRipple}
+            transitionTimeout={TRANSITION_TIMEOUT}
           />
         </TouchableOpacity>
       </Animated.View>
@@ -201,9 +227,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   sacredButton: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
+    width: 200,
+    height: 200,
+    borderRadius: 100,
     borderWidth: 3,
     alignItems: "center",
     justifyContent: "center",
