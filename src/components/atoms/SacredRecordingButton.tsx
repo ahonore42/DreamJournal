@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { View, StyleSheet, Animated, TouchableOpacity } from "react-native";
+import * as Haptics from "expo-haptics";
 import Colors from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { FlowerOfLifeSVG } from "../atoms/FlowerOfLifeSVG";
 
 /**
- * Sacred Recording Button Component.
+ * Sacred Recording Button Component with Haptic Feedback.
  * Manages button state, animation triggers, and passes color props to FlowerOfLifeSVG.
  */
 export const SacredRecordingButton: React.FC<{
@@ -39,12 +40,45 @@ export const SacredRecordingButton: React.FC<{
 
   const TRANSITION_TIMEOUT = 500;
 
+  // Enhanced haptic feedback function
+  const triggerHapticFeedback = useCallback(async () => {
+    try {
+      if (isRecording) {
+        // Stopping recording - use a more substantial feedback
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        // Add a subtle second pulse for "completion" feeling
+        setTimeout(() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }, 100);
+      } else if (!isTranscribing && !transcriptionExists) {
+        // Starting recording - use a strong, confident feedback
+        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        // Add a gentle follow-up to signify "activation"
+        setTimeout(() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }, 150);
+      }
+    } catch (error) {
+      // Haptics might not be available on all devices/simulators
+      console.log("Haptic feedback not available:", error);
+    }
+  }, [isRecording, isTranscribing, transcriptionExists]);
+
+  // Enhanced onPress handler with haptics
+  const handlePress = useCallback(() => {
+    // Trigger haptic feedback first for immediate response
+    triggerHapticFeedback();
+
+    // Then call the original onPress
+    onPress();
+  }, [triggerHapticFeedback, onPress]);
+
   // Helper function to determine the target color based on the current state
   const getTargetColor = useCallback(() => {
     if (forceDefaultColor) return colors.primary;
     if (isRecording) return colors.accent;
     if (isTranscribing) return colors.secondary;
-    if (transcriptionExists) return colors.secondary; 
+    if (transcriptionExists) return colors.secondary;
     return colors.primary;
   }, [
     isRecording,
@@ -111,14 +145,8 @@ export const SacredRecordingButton: React.FC<{
 
       anim.start();
 
-      // Log the animation values to debug
-      const listener = scaleValue.addListener(({ value }) => {
-        console.log("SCALE VALUE:", value);
-      });
-
       return () => {
         anim.stop();
-        scaleValue.removeListener(listener);
         scaleValue.setValue(1);
       };
     } else {
@@ -156,9 +184,9 @@ export const SacredRecordingButton: React.FC<{
       containerTimeoutRef.current = setTimeout(() => {
         setContainerBorderColor(targetColor);
         containerTimeoutRef.current = null;
-      }, TRANSITION_TIMEOUT + 10); // Test with higher value
+      }, TRANSITION_TIMEOUT + 10);
 
-      // Update FlowerOfLifeSVG color after 800ms (existing timing)
+      // Update FlowerOfLifeSVG color after transition
       const flowerTimeoutId = setTimeout(() => {
         setCurrentDisplayColor(targetColor);
         setTriggerRipple(false);
@@ -166,7 +194,6 @@ export const SacredRecordingButton: React.FC<{
 
       return () => {
         clearTimeout(flowerTimeoutId);
-        // Container timeout managed by the ref
       };
     } else {
       setTriggerRipple(false);
@@ -180,6 +207,18 @@ export const SacredRecordingButton: React.FC<{
     colors.primary,
     getTargetColor,
   ]);
+
+  // Add state change haptics for enhanced UX
+  useEffect(() => {
+    // Gentle notification haptic when transcription completes
+    if (transcriptionExists && !isTranscribing) {
+      const timer = setTimeout(() => {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }, 300); // Small delay to let visual transition settle
+
+      return () => clearTimeout(timer);
+    }
+  }, [transcriptionExists, isTranscribing]);
 
   return (
     <View style={styles.sacredContainer}>
@@ -199,7 +238,7 @@ export const SacredRecordingButton: React.FC<{
         ]}
       >
         <TouchableOpacity
-          onPress={onPress}
+          onPress={handlePress}
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel={isRecording ? "Stop recording" : "Start recording"}
