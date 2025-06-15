@@ -1,11 +1,10 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { View, StyleSheet, Dimensions, Animated, TouchableOpacity } from "react-native";
 import { Text } from "@/components/Themed";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import Colors from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
-
-const { width } = Dimensions.get("window");
+import { SacredRecordingButton } from "../atoms/SacredRecordingButton";
 
 export const VoiceRecorder: React.FC = () => {
   const colorScheme = useColorScheme();
@@ -24,169 +23,449 @@ export const VoiceRecorder: React.FC = () => {
     clearRecording,
   } = useVoiceRecording();
 
+  // Animated values for breathing (while recording) and pulsing (while transcribing)
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
   const breathingAnim = React.useRef(new Animated.Value(1)).current;
 
-  // Sacred breathing animation while recording
-  useEffect(() => {
+  // Animated values for overall button and transcript transitions
+  const buttonOpacity = React.useRef(new Animated.Value(1)).current;
+  const buttonScale = React.useRef(new Animated.Value(1)).current;
+  const transcriptOpacity = React.useRef(new Animated.Value(0)).current;
+  const transcriptTranslateY = React.useRef(new Animated.Value(50)).current;
+
+  // ButtonKey state - we don't want to re-mount the button
+  const [forceButtonDefaultColor, setForceButtonDefaultColor] = useState(false);
+
+  // Track if we've already faded out for this transcription
+  const hasFadedOutRef = useRef(false);
+
+  // Store animation references to ensure they persist
+  const breathingAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const pulseAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const fadeOutButton = useCallback(() => {
+    console.log("VoiceRecorder: Explicitly fading out button and showing transcript.");
+
+    Animated.parallel([
+      Animated.timing(buttonOpacity, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonScale, {
+        toValue: 0.8,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(transcriptOpacity, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(transcriptTranslateY, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start((finished) => {
+      if (finished) {
+        console.log("VoiceRecorder: Button faded out. Resetting to cyan while invisible.");
+        buttonScale.setValue(1);
+        
+        // Reset color while invisible
+        setTimeout(() => {
+          setForceButtonDefaultColor(true);
+          // REMOVED: setButtonKey - no re-mounting
+        }, 50);
+      }
+    });
+  }, [buttonOpacity, buttonScale, transcriptOpacity, transcriptTranslateY]);
+
+  const fadeInButton = useCallback(() => {
+    console.log("VoiceRecorder: Explicitly fading in button and hiding transcript.");
+
+    // Reset force flag before fading in
+    setForceButtonDefaultColor(false);
+
+    Animated.parallel([
+      Animated.timing(buttonOpacity, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(transcriptOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(transcriptTranslateY, {
+        toValue: 50,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [buttonOpacity, transcriptOpacity, transcriptTranslateY]);
+
+  const handleRecordingPress = () => {
+    console.log("VoiceRecorder: handleRecordingPress called, current isRecording:", isRecording);
+
     if (isRecording) {
-      const breathingAnimation = Animated.loop(
+      console.log("VoiceRecorder: Stopping recording");
+      stopRecording();
+    } else if (!isTranscribing && !transcription) {
+      console.log("VoiceRecorder: Starting recording");
+      startRecording();
+    }
+  };
+
+  const handleClearRecording = () => {
+    console.log("VoiceRecorder: handleClearRecording called. Clearing and showing cyan button.");
+
+    clearRecording();
+    setForceButtonDefaultColor(true);
+    
+    // Reset hasFadedOutRef
+    hasFadedOutRef.current = false;
+
+    // Set initial hidden state immediately
+    buttonOpacity.setValue(0);
+    transcriptOpacity.setValue(1);
+    transcriptTranslateY.setValue(0);
+
+    // Animate to visible state
+    setTimeout(() => {
+      fadeInButton();
+    }, 50);
+  };
+
+  // Determine if the button should be explicitly disabled
+  const isButtonTrulyDisabled = React.useMemo(() => {
+    return !!transcription && !isTranscribing;
+  }, [transcription, isTranscribing]);
+
+  // Breathing animation - ensure it works with re-renders
+  useEffect(() => {
+    console.log("VoiceRecorder: Breathing effect triggered, isRecording:", isRecording);
+    
+    if (isRecording) {
+      console.log("VoiceRecorder: Starting breathing animation");
+      
+      // Reset to starting value
+      breathingAnim.setValue(1);
+      
+      // Create the breathing animation
+      breathingAnimationRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(breathingAnim, {
-            toValue: 1.2,
-            duration: 3000, // 3 second inhale
+            toValue: 1.15,
+            duration: 3000,
             useNativeDriver: true,
           }),
           Animated.timing(breathingAnim, {
             toValue: 1,
-            duration: 3000, // 3 second exhale
+            duration: 3000,
             useNativeDriver: true,
           }),
-        ]),
+        ])
       );
-      breathingAnimation.start();
-      return () => breathingAnimation.stop();
+      
+      breathingAnimationRef.current.start();
+
+      return () => {
+        console.log("VoiceRecorder: Stopping breathing animation");
+        if (breathingAnimationRef.current) {
+          breathingAnimationRef.current.stop();
+          breathingAnimationRef.current = null;
+        }
+        breathingAnim.setValue(1);
+      };
     } else {
+      console.log("VoiceRecorder: Resetting breathing to 1");
+      if (breathingAnimationRef.current) {
+        breathingAnimationRef.current.stop();
+        breathingAnimationRef.current = null;
+      }
       breathingAnim.setValue(1);
     }
-  }, [isRecording]);
+  }, [isRecording, breathingAnim]);
 
-  // Pulse animation for transcribing
+  // Pulse animation
   useEffect(() => {
     if (isTranscribing) {
-      const pulsingAnimation = Animated.loop(
-        Animated.timing(pulseAnim, {
-          toValue: 1.1,
-          duration: 1000,
-          useNativeDriver: true,
-        }),
+      console.log("VoiceRecorder: Starting pulse animation");
+      
+      // Reset to starting value
+      pulseAnim.setValue(1);
+      
+      pulseAnimationRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, {
+            toValue: 1.08,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
       );
-      pulsingAnimation.start();
-      return () => pulsingAnimation.stop();
+      
+      pulseAnimationRef.current.start();
+      
+      return () => {
+        if (pulseAnimationRef.current) {
+          pulseAnimationRef.current.stop();
+          pulseAnimationRef.current = null;
+        }
+        pulseAnim.setValue(1);
+      };
     } else {
+      if (pulseAnimationRef.current) {
+        pulseAnimationRef.current.stop();
+        pulseAnimationRef.current = null;
+      }
       pulseAnim.setValue(1);
     }
-  }, [isTranscribing]);
+  }, [isTranscribing, pulseAnim]);
 
-  const getRecordingCircleColor = () => {
-    if (isRecording) return colors.tint; // Purple when recording
-    if (isTranscribing) return "#E5EB83"; // Gold when transcribing
-    return colors.background === "#121212" ? "#2A2A2A" : "#F1F3F4"; // Surface color
-  };
+  // Fade out trigger
+  useEffect(() => {
+    if (transcription && !isTranscribing && !hasFadedOutRef.current) {
+      hasFadedOutRef.current = true;
+      fadeOutButton();
+    }
+    if (!transcription) {
+      hasFadedOutRef.current = false;
+    }
+  }, [transcription, isTranscribing, fadeOutButton]);
 
   return (
     <View style={styles.container}>
-      {/* Sacred Recording Circle */}
-      <View style={styles.recordingArea}>
+      {/* Top Content Area - Transcription and Controls */}
+      <View style={styles.topContent}>
+        {/* Animated Transcription Display */}
         <Animated.View
           style={[
-            styles.recordingCircle,
+            styles.transcriptionContainer,
             {
-              transform: [{ scale: isRecording ? breathingAnim : isTranscribing ? pulseAnim : 1 }],
-              backgroundColor: getRecordingCircleColor(),
-              borderColor: colors.tint,
-              borderWidth: isRecording ? 3 : 1,
+              opacity: transcriptOpacity,
+              transform: [{ translateY: transcriptTranslateY }],
             },
           ]}
         >
-          <Text style={styles.recordingIcon}>
-            {isRecording ? "🎙️" : isTranscribing ? "🔮" : "🌙"}
-          </Text>
+          {(transcription || isTranscribing) && (
+            <View style={styles.transcriptionArea}>
+              <Text
+                style={[
+                  styles.transcriptionTitle,
+                  {
+                    color: colors.accent,
+                    textShadowColor: colors.accent,
+                    textShadowOffset: { width: 0, height: 0 },
+                    textShadowRadius: 8,
+                  },
+                ]}
+              >
+                ✨ Dream Transcription
+              </Text>
+
+              {isTranscribing ? (
+                <View style={styles.transcribing}>
+                  <Text
+                    style={[
+                      styles.transcribingText,
+                      {
+                        color: colors.text,
+                        textShadowColor: colors.tint,
+                        textShadowOffset: { width: 0, height: 0 },
+                        textShadowRadius: 4,
+                      },
+                    ]}
+                  >
+                    🔮 Converting your sacred words to text...
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.transcribing}>
+                  <Text
+                    style={[
+                      styles.dreamText,
+                      {
+                        color: colors.text,
+                        textShadowColor: colors.accent,
+                        textShadowOffset: { width: 0, height: 0 },
+                        textShadowRadius: 3,
+                      },
+                    ]}
+                  >
+                    {transcription}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
         </Animated.View>
 
-        {/* Recording Status */}
-        <Text style={[styles.status, { color: colors.tint }]}>
-          {isRecording
-            ? "Recording your sacred dream..."
-            : isTranscribing
-              ? "Converting speech to text..."
-              : audioUri
-                ? "Dream captured successfully"
-                : "Ready to record your dream"}
-        </Text>
-
-        {isRecording && (
-          <Text style={[styles.hint, { color: colors.text }]}>
-            Speak naturally. Duration: {Math.floor(Date.now() / 1000) % 60}s
-          </Text>
-        )}
-
-        {duration > 0 && !isRecording && (
-          <Text style={[styles.duration, { color: colors.text }]}>
-            Recording duration: {duration} seconds
-          </Text>
-        )}
-      </View>
-
-      {/* Recording Controls */}
-      <View style={styles.controls}>
-        {!isRecording && !audioUri && (
-          <TouchableOpacity
-            style={[styles.recordButton, { backgroundColor: colors.tint }]}
-            onPress={startRecording}
-            activeOpacity={0.8}
+        {/* Playback Controls */}
+        {audioUri && !isTranscribing && transcription && (
+          <Animated.View
+            style={[
+              styles.playbackControls,
+              {
+                opacity: transcriptOpacity,
+                transform: [{ translateY: transcriptTranslateY }],
+              },
+            ]}
           >
-            <Text style={styles.recordButtonText}>🎙️ Begin Dream Recording</Text>
-          </TouchableOpacity>
-        )}
-
-        {isRecording && (
-          <TouchableOpacity style={[styles.stopButton]} onPress={stopRecording} activeOpacity={0.8}>
-            <Text style={styles.stopButtonText}>⏹️ Complete Recording</Text>
-          </TouchableOpacity>
-        )}
-
-        {audioUri && !isTranscribing && (
-          <View style={styles.playbackControls}>
             <TouchableOpacity
-              style={[styles.playButton, { backgroundColor: colors.tint }]}
+              style={[
+                styles.playButton,
+                {
+                  backgroundColor: colors.tint,
+                  shadowColor: colors.tint,
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.3,
+                  shadowRadius: 8,
+                  elevation: 8,
+                },
+              ]}
               onPress={playRecording}
             >
-              <Text style={styles.playButtonText}>▶️ Replay</Text>
+              <Text style={styles.playButtonText}>▶️ Replay Dream</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.clearButton, { borderColor: colors.tint }]}
-              onPress={clearRecording}
+              style={[
+                styles.clearButton,
+                {
+                  borderColor: colors.accent,
+                  shadowColor: colors.accent,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 4,
+                },
+              ]}
+              onPress={handleClearRecording}
             >
-              <Text style={[styles.clearButtonText, { color: colors.tint }]}>🔄 Record Again</Text>
+              <Text
+                style={[
+                  styles.clearButtonText,
+                  {
+                    color: colors.accent,
+                    textShadowColor: colors.accent,
+                    textShadowOffset: { width: 0, height: 0 },
+                    textShadowRadius: 2,
+                  },
+                ]}
+              >
+                🔄 Record Again
+              </Text>
             </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {/* Error Display */}
+        {error && (
+          <View
+            style={[
+              styles.errorContainer,
+              {
+                shadowColor: "#F44336",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 8,
+                elevation: 8,
+              },
+            ]}
+          >
+            <Text style={styles.errorText}>{error}</Text>
           </View>
         )}
       </View>
 
-      {/* Transcription Display */}
-      {(transcription || isTranscribing) && (
-        <View
-          style={[
-            styles.transcriptionArea,
-            { backgroundColor: colors.background === "#121212" ? "#1E1E1E" : "#F8F9FA" },
-          ]}
-        >
-          <Text style={[styles.transcriptionTitle, { color: colors.tint }]}>
-            ✨ Dream Transcription
+      {/* Bottom Half - Sacred Recording Interface */}
+      <View style={styles.bottomHalf}>
+        {/* Recording Status */}
+        <View style={styles.statusArea}>
+          <Text
+            style={[
+              styles.status,
+              {
+                color: colors.tint,
+                textShadowColor: colors.tint,
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 6,
+              },
+            ]}
+          >
+            {isRecording
+              ? "Recording your sacred dream..."
+              : isTranscribing
+                ? "Converting speech to text..."
+                : audioUri && transcription
+                  ? "Dream transcription complete"
+                  : "Touch the sacred geometry to begin"}
           </Text>
 
-          {isTranscribing ? (
-            <View style={styles.transcribing}>
-              <Text style={[styles.transcribingText, { color: colors.text }]}>
-                🔮 Converting your sacred words to text...
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.transcriptionText}>
-              <Text style={[styles.dreamText, { color: colors.text }]}>{transcription}</Text>
-            </View>
+          {isRecording && (
+            <Text
+              style={[
+                styles.hint,
+                {
+                  color: colors.text,
+                  textShadowColor: colors.accent,
+                  textShadowOffset: { width: 0, height: 0 },
+                  textShadowRadius: 2,
+                },
+              ]}
+            >
+              Speak naturally. Breathe with the rhythm.
+            </Text>
+          )}
+
+          {duration > 0 && !isRecording && !transcription && (
+            <Text
+              style={[
+                styles.duration,
+                {
+                  color: colors.text,
+                  textShadowColor: colors.accent,
+                  textShadowOffset: { width: 0, height: 0 },
+                  textShadowRadius: 2,
+                },
+              ]}
+            >
+              Recording duration: {duration} seconds
+            </Text>
           )}
         </View>
-      )}
 
-      {/* Error Display */}
-      {error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
+        {/* Animated Sacred Recording Button - NO KEY PROP */}
+        <Animated.View
+          style={[
+            styles.recordingArea,
+            {
+              opacity: buttonOpacity,
+            },
+          ]}
+          pointerEvents={isButtonTrulyDisabled ? "none" : "auto"}
+        >
+          <SacredRecordingButton
+            isRecording={isRecording}
+            isTranscribing={isTranscribing}
+            onPress={handleRecordingPress}
+            breathingAnim={breathingAnim}
+            pulseAnim={pulseAnim}
+            containerScaleAnim={buttonScale}
+            isButtonDisabled={isButtonTrulyDisabled}
+            transcriptionExists={!!transcription}
+            forceDefaultColor={forceButtonDefaultColor}
+          />
+        </Animated.View>
+      </View>
     </View>
   );
 };
@@ -196,76 +475,54 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
+  topContent: {
+    flex: 1,
+    minHeight: 0,
+  },
+  transcriptionContainer: {
+    flex: 1,
+  },
+  bottomHalf: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingBottom: 40,
+  },
+  statusArea: {
+    alignItems: "center",
+    marginBottom: 32,
+    paddingHorizontal: 20,
+  },
   recordingArea: {
     alignItems: "center",
-    marginVertical: 32,
-  },
-  recordingCircle: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
-    shadowColor: "#8C6184",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 16,
-  },
-  recordingIcon: {
-    fontSize: 48,
   },
   status: {
     fontSize: 18,
     fontWeight: "600",
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 12,
+    letterSpacing: 0.5,
   },
   hint: {
     fontSize: 14,
     textAlign: "center",
     fontStyle: "italic",
-    opacity: 0.7,
+    opacity: 0.9,
+    letterSpacing: 0.3,
   },
   duration: {
     fontSize: 14,
     textAlign: "center",
-    opacity: 0.7,
-  },
-  controls: {
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  recordButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 12,
-    minWidth: width * 0.8,
-    alignItems: "center",
-  },
-  recordButtonText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  stopButton: {
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 12,
-    backgroundColor: "#F44336",
-    minWidth: width * 0.6,
-    alignItems: "center",
-  },
-  stopButtonText: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "600",
+    opacity: 0.9,
+    letterSpacing: 0.3,
   },
   playbackControls: {
     flexDirection: "row",
     gap: 16,
     justifyContent: "center",
+    marginTop: 20,
+    paddingHorizontal: 20,
   },
   playButton: {
     paddingHorizontal: 24,
@@ -289,9 +546,9 @@ const styles = StyleSheet.create({
   },
   transcriptionArea: {
     flex: 1,
-    borderRadius: 16,
     padding: 20,
-    marginTop: 16,
+    marginBottom: 16,
+    minHeight: 200,
   },
   transcriptionTitle: {
     fontSize: 20,
@@ -307,21 +564,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
   },
-  transcriptionText: {
-    flex: 1,
-  },
   dreamText: {
     fontSize: 16,
     lineHeight: 26,
   },
   errorContainer: {
-    backgroundColor: "#F44336",
+    backgroundColor: "rgba(244, 67, 54, 0.2)",
+    borderWidth: 1,
+    borderColor: "#F44336",
     padding: 12,
     borderRadius: 8,
-    marginTop: 16,
+    marginBottom: 16,
   },
   errorText: {
-    color: "#FFFFFF",
+    color: "#FF6B6B",
     textAlign: "center",
+    textShadowColor: "#F44336",
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
 });
