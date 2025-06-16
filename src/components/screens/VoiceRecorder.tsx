@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { View, StyleSheet, Dimensions, Animated, TouchableOpacity } from "react-native";
-import { Text } from "@/components/Themed";
+import { View, StyleSheet, Animated } from "react-native";
+import { Text } from "@/components/layout/Themed";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import Colors from "@/constants/Colors";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { SacredRecordingButton } from "../atoms/SacredRecordingButton";
+import { RecordingButton } from "../ui/RecordingButton";
+import { Button } from "../ui/Button";
 
 export const VoiceRecorder: React.FC = () => {
   const colorScheme = useColorScheme();
@@ -100,7 +101,7 @@ export const VoiceRecorder: React.FC = () => {
         duration: 400,
         useNativeDriver: true,
       }),
-    ]).start()
+    ]).start();
   }, [buttonOpacity, buttonScale, transcriptOpacity, transcriptTranslateY]);
 
   const handleRecordingPress = () => {
@@ -303,51 +304,20 @@ export const VoiceRecorder: React.FC = () => {
               },
             ]}
           >
-            <TouchableOpacity
-              style={[
-                styles.playButton,
-                {
-                  backgroundColor: colors.primary,
-                  shadowColor: colors.primary,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.3,
-                  shadowRadius: 8,
-                  elevation: 8,
-                },
-              ]}
+            <Button
+              title="▶️ Replay Dream"
               onPress={playRecording}
-            >
-              <Text style={styles.playButtonText}>▶️ Replay Dream</Text>
-            </TouchableOpacity>
+              variant="primary"
+              size="medium"
+            />
 
-            <TouchableOpacity
-              style={[
-                styles.clearButton,
-                {
-                  borderColor: colors.secondary,
-                  shadowColor: colors.secondary,
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.2,
-                  shadowRadius: 4,
-                  elevation: 4,
-                },
-              ]}
+            <Button
+              title="🔄 Record Again"
               onPress={handleClearRecording}
-            >
-              <Text
-                style={[
-                  styles.clearButtonText,
-                  {
-                    color: colors.secondary,
-                    textShadowColor: colors.secondary,
-                    textShadowOffset: { width: 0, height: 0 },
-                    textShadowRadius: 2,
-                  },
-                ]}
-              >
-                🔄 Record Again
-              </Text>
-            </TouchableOpacity>
+              variant="secondary"
+              ghost
+              size="medium"
+            />
           </Animated.View>
         )}
 
@@ -438,7 +408,7 @@ export const VoiceRecorder: React.FC = () => {
           ]}
           pointerEvents={isButtonTrulyDisabled ? "none" : "auto"}
         >
-          <SacredRecordingButton
+          <RecordingButton
             isRecording={isRecording}
             isTranscribing={isTranscribing}
             onPress={handleRecordingPress}
