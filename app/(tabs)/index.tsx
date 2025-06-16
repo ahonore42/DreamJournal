@@ -1,6 +1,6 @@
 import React from "react";
 import { StyleSheet, ScrollView } from "react-native";
-import { VoiceRecorder } from "@/components/organisms/VoiceRecorder";
+import { VoiceRecorder } from "@/components/screens/VoiceRecorder";
 import StarryBackground from "@/components/layout/StarryBackground";
 
 export default function TabOneScreen() {
