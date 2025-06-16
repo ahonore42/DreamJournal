@@ -3,19 +3,14 @@ import { Text, StyleSheet, TextStyle } from "react-native";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import Colors from "@/constants/Colors";
 
-export interface SpiritualTextProps {
+export interface StyledTextProps {
   children: React.ReactNode;
   variant?: "h1" | "h2" | "h3" | "body" | "caption" | "mantra";
   align?: "left" | "center" | "right";
   style?: TextStyle;
 }
 
-export function SpiritualText({
-  children,
-  variant = "body",
-  align = "left",
-  style,
-}: SpiritualTextProps) {
+export function StyledText({ children, variant = "body", align = "left", style }: StyledTextProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
 
