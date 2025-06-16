@@ -6,10 +6,10 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { FlowerOfLifeSVG } from "../atoms/FlowerOfLifeSVG";
 
 /**
- * Sacred Recording Button Component with Haptic Feedback.
+ * Recording Button Component with Haptic Feedback.
  * Manages button state, animation triggers, and passes color props to FlowerOfLifeSVG.
  */
-export const SacredRecordingButton: React.FC<{
+export const RecordingButton: React.FC<{
   isRecording: boolean;
   isTranscribing: boolean;
   onPress: () => void;
