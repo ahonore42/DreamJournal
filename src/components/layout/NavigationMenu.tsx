@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
-  Alert,
-  StatusBar,
-  Platform,
-} from "react-native";
+import { View, StyleSheet, TouchableOpacity, Dimensions, Alert, Platform } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,8 +12,7 @@ import { BlurView } from "expo-blur";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-import { SpiritualText } from "@/components/ui/SpiritualText";
+import { StyledText } from "@/components/ui/StyledText";
 import { useAuth } from "@/hooks/useAuth";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import Colors from "@/constants/Colors";
@@ -229,17 +220,17 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ isVisible, onClo
         <View style={styles.header}>
           <View style={styles.userSection}>
             <View style={styles.avatar}>
-              <SpiritualText variant="h2" style={styles.avatarText}>
+              <StyledText variant="h2" style={styles.avatarText}>
                 🌙
-              </SpiritualText>
+              </StyledText>
             </View>
             <View style={styles.userInfo}>
-              <SpiritualText variant="h3" style={styles.userName}>
+              <StyledText variant="h3" style={styles.userName}>
                 {user?.name || "Dream Seeker"}
-              </SpiritualText>
-              <SpiritualText variant="caption" style={styles.userEmail}>
+              </StyledText>
+              <StyledText variant="caption" style={styles.userEmail}>
                 {user?.email || "Sacred Journey"}
-              </SpiritualText>
+              </StyledText>
             </View>
           </View>
         </View>
@@ -270,9 +261,9 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ isVisible, onClo
                     color={item.color || colors.primary}
                     style={styles.menuItemIcon}
                   />
-                  <SpiritualText variant="body" style={styles.menuItemText}>
+                  <StyledText variant="body" style={styles.menuItemText}>
                     {item.title}
-                  </SpiritualText>
+                  </StyledText>
                 </View>
 
                 <FontAwesome
@@ -288,12 +279,12 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ isVisible, onClo
 
         {/* Footer */}
         <View style={styles.footer}>
-          <SpiritualText variant="caption" style={styles.footerText}>
+          <StyledText variant="caption" style={styles.footerText}>
             ✨ DreamJournal v1.0 ✨
-          </SpiritualText>
-          <SpiritualText variant="caption" style={styles.footerSubtext}>
+          </StyledText>
+          <StyledText variant="caption" style={styles.footerSubtext}>
             Explore the cosmos within
-          </SpiritualText>
+          </StyledText>
         </View>
       </Animated.View>
     </Animated.View>

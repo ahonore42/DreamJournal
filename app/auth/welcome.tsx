@@ -1,10 +1,10 @@
 import React from "react";
 import { StyleSheet, Dimensions } from "react-native";
-import { View } from "@/components/Themed";
-import { SpiritualText } from "@/components/atoms/SpiritualText";
-import { SpiritualButton } from "@/components/atoms/SpiritualButton";
+import { View } from "@/components/layout/Themed";
+import { StyledText } from "@/components/ui/StyledText";
+import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/hooks/useAuth";
-import { router } from "expo-router";
+import StarryBackground from "@/components/layout/StarryBackground";
 
 const { width } = Dimensions.get("window");
 
@@ -12,56 +12,59 @@ export default function WelcomeScreen() {
   const { signIn } = useAuth();
 
   const handleSignIn = () => {
+    // Just call signIn - the root layout will handle navigation automatically
     signIn();
-    router.replace("/(tabs)");
   };
 
   return (
-    <View style={styles.container}>
-      {/* Sacred Moon Symbol */}
-      <View style={styles.moonContainer}>
-        <SpiritualText variant="h1" align="center" style={styles.moonEmoji}>
-          🌙
-        </SpiritualText>
-      </View>
+    <StarryBackground>
+      <View style={styles.container}>
+        {/* Sacred Moon Symbol */}
+        <View style={styles.moonContainer}>
+          <StyledText variant="h1" align="center" style={styles.moonEmoji}>
+            🌙
+          </StyledText>
+        </View>
 
-      {/* App Branding */}
-      <View style={styles.branding}>
-        <SpiritualText variant="h1" align="center" style={styles.appName}>
-          DreamJournal
-        </SpiritualText>
-        <SpiritualText variant="mantra" align="center" style={styles.tagline}>
-          Capture the wisdom of your dreams
-        </SpiritualText>
-      </View>
+        {/* App Branding */}
+        <View style={styles.branding}>
+          <StyledText variant="h1" align="center" style={styles.appName}>
+            DreamJournal
+          </StyledText>
+          <StyledText variant="mantra" align="center" style={styles.tagline}>
+            Capture the wisdom of your dreams
+          </StyledText>
+        </View>
 
-      {/* Sacred Description */}
-      <View style={styles.description}>
-        <SpiritualText variant="body" align="center" style={styles.descText}>
-          Welcome to your sacred space for dream exploration. Begin your journey into the mystical
-          realm of consciousness.
-        </SpiritualText>
-      </View>
+        {/* Sacred Description */}
+        <View style={styles.description}>
+          <StyledText variant="body" align="center" style={styles.descText}>
+            Welcome to your sacred space for dream exploration. Begin your journey into the mystical
+            realm of consciousness.
+          </StyledText>
+        </View>
 
-      {/* Sacred Actions */}
-      <View style={styles.actions}>
-        <SpiritualButton
-          title="✨ Begin Your Journey"
-          onPress={handleSignIn}
-          variant="sacred"
-          size="large"
-          style={styles.primaryButton}
-        />
+        {/* Sacred Actions */}
+        <View style={styles.actions}>
+          <Button
+            title="✨ Begin Your Journey"
+            onPress={handleSignIn}
+            variant="sacred"
+            size="large"
+            style={styles.primaryButton}
+          />
 
-        <SpiritualButton
-          title="🔮 Sign In with Sacred Intent"
-          onPress={handleSignIn}
-          variant="ghost"
-          size="medium"
-          style={styles.ghostButton}
-        />
+          <Button
+            title="🔮 Sign In"
+            onPress={handleSignIn}
+            variant="primary"
+            ghost
+            size="medium"
+            style={styles.ghostButton}
+          />
+        </View>
       </View>
-    </View>
+    </StarryBackground>
   );
 }
 
@@ -71,7 +74,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
-    backgroundColor: "#121212",
   },
   moonContainer: {
     marginBottom: 32,
