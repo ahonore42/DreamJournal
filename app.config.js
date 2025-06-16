@@ -9,17 +9,18 @@ export default {
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
     splash: {
-      image: "./assets/images/splash-icon.png",
+      backgroundColor: "#00001a",
+      // You can keep the image or remove it if you want a purely dark screen
+      // image: "./assets/images/splash-icon.png",
       resizeMode: "contain",
-      backgroundColor: "#ffffff",
     },
     ios: {
       supportsTablet: true,
     },
     android: {
       adaptiveIcon: {
-        foregroundImage: "./assets/images/adaptive-icon.png",
-        backgroundColor: "#ffffff",
+        // foregroundImage: "./assets/images/adaptive-icon.png",
+        backgroundColor: "#00001a",
       },
       edgeToEdgeEnabled: true,
     },
