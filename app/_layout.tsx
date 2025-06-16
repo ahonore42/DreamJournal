@@ -7,7 +7,9 @@ import * as SplashScreen from "expo-splash-screen";
 import { View } from "react-native";
 import "react-native-reanimated";
 import { useColorScheme } from "@/hooks/useColorScheme";
-import ShootingStarSplashScreen from "@/components/ShootingStarSplashScreen";
+import { useAuth } from "@/hooks/useAuth";
+import ShootingStarSplashScreen from "@/components/screens/ShootingStarSplashScreen";
+import WelcomeScreen from "./auth/welcome";
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -31,22 +33,29 @@ export default function RootLayout() {
   // This state will control the switch from our custom splash to the main app.
   const [isSplashAnimationComplete, setSplashAnimationComplete] = useState(false);
 
+  // Get authentication state
+  const { isAuthenticated, isLoading, initializeAuth } = useAuth();
+
   useEffect(() => {
     if (fontError) throw fontError;
   }, [fontError]);
+
+  // Initialize auth state when the app starts
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
 
   // This callback hides the native splash screen as soon as the root view is laid out.
   // This reveals our custom splash animation (<ShootingStarSplashScreen />).
   const onLayout = useCallback(async () => {
     // We only need to hide the splash screen once.
-    // The conditional check here is not strictly necessary but adds robustness.
     if (!isSplashAnimationComplete) {
       await SplashScreen.hideAsync();
     }
   }, [isSplashAnimationComplete]);
 
   // This effect starts a timer once fonts are loaded. After the timer,
-  // we switch from the splash animation to the main app content.
+  // we switch from the splash animation to the next screen (auth check).
   useEffect(() => {
     if (fontsLoaded) {
       const timer = setTimeout(() => {
@@ -59,11 +68,19 @@ export default function RootLayout() {
   // The root View is always rendered. `onLayout` will fire once, hiding the native splash.
   return (
     <View style={{ flex: 1 }} onLayout={onLayout}>
-      {/* We show the splash animation until BOTH fonts are loaded AND the animation timer is complete.
-        This ensures the splash is visible for a minimum duration and doesn't disappear before fonts are ready.
+      {/* 
+        Authentication Flow:
+        1. Show splash while fonts are loading or splash animation is playing
+        2. Show splash/loading while checking authentication state
+        3. Show welcome screen if not authenticated
+        4. Show main app if authenticated
       */}
       {!fontsLoaded || !isSplashAnimationComplete ? (
         <ShootingStarSplashScreen />
+      ) : isLoading ? (
+        <ShootingStarSplashScreen />
+      ) : !isAuthenticated ? (
+        <WelcomeScreen />
       ) : (
         <RootLayoutNav />
       )}
