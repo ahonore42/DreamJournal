@@ -10,26 +10,38 @@ export default {
     newArchEnabled: true,
     splash: {
       backgroundColor: "#00001a",
-      // You can keep the image or remove it if you want a purely dark screen
-      // image: "./assets/images/splash-icon.png",
       resizeMode: "contain",
     },
     ios: {
       supportsTablet: true,
+      bundleIdentifier: "com.dreamjournal.app",
+      infoPlist: {
+        NSSpeechRecognitionUsageDescription:
+          "This app uses speech recognition to transcribe your dreams into text for your sacred journal.",
+        NSMicrophoneUsageDescription:
+          "This app needs access to your microphone to record your dream narrations.",
+        NSSpeechRecognitionUsageDescription:
+          "DreamJournal uses speech recognition to convert your spoken dreams into text, making it easier to capture your sacred visions the moment you wake up.",
+      },
     },
     android: {
       adaptiveIcon: {
-        // foregroundImage: "./assets/images/adaptive-icon.png",
         backgroundColor: "#00001a",
       },
       edgeToEdgeEnabled: true,
+      permissions: [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+      ],
+      package: "com.dreamjournal.app",
     },
     web: {
       bundler: "metro",
       output: "static",
       favicon: "./assets/images/favicon.png",
     },
-    plugins: ["expo-router"],
+    plugins: ["expo-router", "@react-native-voice/voice"],
     experiments: {
       typedRoutes: true,
     },
