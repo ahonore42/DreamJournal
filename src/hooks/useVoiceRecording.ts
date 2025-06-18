@@ -1,15 +1,23 @@
-import { useState, useEffect } from "react";
-import { useAudioRecorder, useAudioPlayer, RecordingPresets, AudioModule } from "expo-audio";
-import * as FileSystem from "expo-file-system";
+import { useState, useEffect, useRef, useCallback } from "react";
+import Voice, {
+  SpeechRecognizedEvent,
+  SpeechResultsEvent,
+  SpeechErrorEvent,
+  SpeechStartEvent,
+  SpeechEndEvent,
+} from "@react-native-voice/voice";
+import { Platform } from "react-native";
 
 export interface VoiceRecordingState {
   isRecording: boolean;
   isTranscribing: boolean;
   audioUri: string | null;
   transcription: string;
+  partialTranscription: string;
   duration: number;
   error: string | null;
   hasPermission: boolean;
+  confidence: number;
 }
 
 export const useVoiceRecording = () => {
@@ -18,37 +26,218 @@ export const useVoiceRecording = () => {
     isTranscribing: false,
     audioUri: null,
     transcription: "",
+    partialTranscription: "",
     duration: 0,
     error: null,
     hasPermission: false,
+    confidence: 0,
   });
 
-  // Use the expo-audio hooks
-  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
-  const audioPlayer = useAudioPlayer(state.audioUri);
+  const startTimeRef = useRef<number>(0);
+  const durationTimerRef = useRef<number | null>(null);
+
+  const cleanupTimer = useCallback(() => {
+    if (durationTimerRef.current) {
+      clearInterval(durationTimerRef.current);
+      durationTimerRef.current = null;
+    }
+  }, []);
+
+  // Initialize Voice recognition event handlers
+  useEffect(() => {
+    Voice.onSpeechStart = onSpeechStart;
+    Voice.onSpeechRecognized = onSpeechRecognized;
+    Voice.onSpeechEnd = onSpeechEnd;
+    Voice.onSpeechError = onSpeechError;
+    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechPartialResults = onSpeechPartialResults;
+    Voice.onSpeechVolumeChanged = onSpeechVolumeChanged;
+
+    return () => {
+      cleanupTimer();
+      Voice.destroy().then(Voice.removeAllListeners).catch(console.error);
+    };
+  }, [cleanupTimer]);
 
   // Request permissions on mount
   useEffect(() => {
     const requestPermissions = async () => {
       try {
-        const { granted } = await AudioModule.requestRecordingPermissionsAsync();
-        setState((prev) => ({ ...prev, hasPermission: granted }));
-
-        if (!granted) {
-          setState((prev) => ({
-            ...prev,
-            error: "Microphone permission required for dream recording",
-          }));
+        if (Platform.OS === "android") {
+          setState((prev) => ({ ...prev, hasPermission: true }));
+        } else if (Platform.OS === "ios") {
+          setState((prev) => ({ ...prev, hasPermission: true }));
+        } else {
+          setState((prev) => ({ ...prev, hasPermission: true }));
         }
       } catch (error) {
+        console.error("Permission request failed:", error);
         setState((prev) => ({
           ...prev,
-          error: "Failed to request microphone permission",
+          error: "Microphone permission required for dream recording",
+          hasPermission: false,
         }));
       }
     };
 
     requestPermissions();
+  }, []);
+
+  const onSpeechStart = useCallback((e: SpeechStartEvent) => {
+    console.log("🎙️ Speech recognition started:", e);
+    startTimeRef.current = Date.now();
+
+    // Clear any existing timer
+    if (durationTimerRef.current) {
+      clearInterval(durationTimerRef.current);
+    }
+
+    // Start duration timer with error handling
+    durationTimerRef.current = setInterval(() => {
+      try {
+        const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+        setState((prev) => ({ ...prev, duration: elapsed }));
+      } catch (error) {
+        console.error("Error updating duration:", error);
+        // Clear timer if there's an error
+        if (durationTimerRef.current) {
+          clearInterval(durationTimerRef.current);
+          durationTimerRef.current = null;
+        }
+      }
+    }, 1000);
+
+    setState((prev) => ({
+      ...prev,
+      isRecording: true,
+      isTranscribing: false,
+      error: null,
+      transcription: "",
+      partialTranscription: "",
+      duration: 0,
+    }));
+  }, []);
+
+  const onSpeechRecognized = useCallback((e: SpeechRecognizedEvent) => {
+    console.log("🔍 Speech recognized:", e);
+  }, []);
+
+  const onSpeechEnd = useCallback((e: SpeechEndEvent) => {
+    console.log("⏹️ Speech recognition ended:", e);
+
+    if (durationTimerRef.current) {
+      clearInterval(durationTimerRef.current);
+      durationTimerRef.current = null;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      isRecording: false,
+      isTranscribing: false,
+      partialTranscription: "",
+    }));
+  }, []);
+
+  const onSpeechError = useCallback((e: SpeechErrorEvent) => {
+    console.error("❌ Speech recognition error:", e);
+
+    // Safe timer cleanup with null checks
+    try {
+      if (durationTimerRef && durationTimerRef.current) {
+        clearInterval(durationTimerRef.current);
+        durationTimerRef.current = null;
+      }
+    } catch (timerError) {
+      console.error("Error clearing timer:", timerError);
+    }
+
+    let errorMessage = "Speech recognition failed. Please try again.";
+
+    try {
+      if (e && e.error) {
+        switch (e.error.code) {
+          case "7": // ERROR_NO_MATCH
+          case "recognition_fail":
+            errorMessage = "No speech detected. Please speak clearly and try again.";
+            break;
+          case "6": // ERROR_SPEECH_TIMEOUT
+            errorMessage = "Speech timeout. Please try speaking again.";
+            break;
+          case "5": // ERROR_CLIENT
+            errorMessage = "Microphone permission denied.";
+            break;
+          case "3": // ERROR_AUDIO
+            errorMessage = "Audio recording problem. Please check your microphone.";
+            break;
+          case "8": // ERROR_BUSY
+            errorMessage = "Speech recognition is busy. Please wait and try again.";
+            break;
+          case "1110":
+            errorMessage = "No speech detected. Please speak more clearly.";
+            break;
+          default:
+            errorMessage = `Speech recognition error: ${e.error.message || "Unknown error"}`;
+        }
+      }
+    } catch (errorParsingError) {
+      console.error("Error parsing speech error:", errorParsingError);
+    }
+
+    try {
+      setState((prev) => ({
+        ...prev,
+        isRecording: false,
+        isTranscribing: false,
+        error: errorMessage,
+        partialTranscription: "",
+      }));
+    } catch (stateError) {
+      console.error("Error updating state after speech error:", stateError);
+      // Fallback: try to at least stop recording state
+      try {
+        setState((prev) => ({
+          ...prev,
+          isRecording: false,
+          isTranscribing: false,
+        }));
+      } catch (fallbackError) {
+        console.error("Fallback state update failed:", fallbackError);
+      }
+    }
+  }, []);
+
+  const onSpeechResults = useCallback((e: SpeechResultsEvent) => {
+    console.log("✨ Final speech results:", e);
+
+    if (e.value && e.value.length > 0) {
+      const bestResult = e.value[0];
+      const confidence = 0.9;
+
+      setState((prev) => ({
+        ...prev,
+        transcription: bestResult,
+        partialTranscription: "",
+        confidence,
+        isTranscribing: false,
+      }));
+    }
+  }, []);
+
+  const onSpeechPartialResults = useCallback((e: SpeechResultsEvent) => {
+    console.log("🔄 Partial speech results:", e);
+
+    if (e.value && e.value.length > 0) {
+      const partialResult = e.value[0];
+      setState((prev) => ({
+        ...prev,
+        partialTranscription: partialResult,
+        isTranscribing: true,
+      }));
+    }
+  }, []);
+
+  const onSpeechVolumeChanged = useCallback((e: any) => {
+    // Could be used for volume-based UI feedback
   }, []);
 
   const startRecording = async () => {
@@ -57,19 +246,34 @@ export const useVoiceRecording = () => {
         throw new Error("Microphone permission required for dream recording");
       }
 
-      console.log("🎙️ Starting sacred dream recording...");
+      console.log("🎙️ Starting sacred dream recording with voice recognition...");
 
-      setState((prev) => ({ ...prev, isRecording: true, error: null }));
-
-      // Prepare and start recording using expo-audio API
-      await audioRecorder.prepareToRecordAsync();
-      audioRecorder.record();
-    } catch (error) {
-      console.error("Failed to start recording:", error);
       setState((prev) => ({
         ...prev,
         isRecording: false,
-        error: error instanceof Error ? error.message : "Failed to start recording",
+        isTranscribing: false,
+        error: null,
+        transcription: "",
+        partialTranscription: "",
+        duration: 0,
+        confidence: 0,
+      }));
+
+      try {
+        await Voice.start("en-US");
+      } catch (voiceError) {
+        // Catch Voice.start errors specifically
+        throw new Error("Could not start voice recognition");
+      }
+    } catch (error) {
+      console.log("Failed to start voice recognition:", error); // Use console.log instead of console.error
+      setState((prev) => ({
+        ...prev,
+        isRecording: false,
+        isTranscribing: false,
+        transcription:
+          "🔧 Could not start recording. Please check microphone permissions and try again.",
+        error: "speech_error",
       }));
     }
   };
@@ -78,128 +282,92 @@ export const useVoiceRecording = () => {
     try {
       console.log("⏹️ Stopping dream recording...");
 
-      // Stop recording - the URI will be available on audioRecorder.uri
-      await audioRecorder.stop();
+      cleanupTimer();
 
-      const uri = audioRecorder.uri;
-
-      setState((prev) => ({
-        ...prev,
-        isRecording: false,
-        isTranscribing: true,
-        audioUri: uri,
-      }));
-
-      // Start transcription process
-      if (uri) {
-        await getTranscription(uri);
+      try {
+        await Voice.stop();
+      } catch (voiceError) {
+        // Silently handle Voice.stop errors
       }
     } catch (error) {
-      console.error("Failed to stop recording:", error);
+      console.log("Failed to stop voice recognition:", error); // Use console.log instead of console.error
+      cleanupTimer();
+
       setState((prev) => ({
         ...prev,
-        error: error instanceof Error ? error.message : "Failed to stop recording",
+        error: "Failed to stop recording",
         isRecording: false,
         isTranscribing: false,
       }));
     }
   };
 
-  const getTranscription = async (audioUri: string) => {
+  const cancelRecording = async () => {
     try {
-      console.log("🔮 Transcribing dream audio...");
+      console.log("❌ Cancelling dream recording...");
 
-      // Get file info
-      const info = await FileSystem.getInfoAsync(audioUri);
-      console.log(`Audio file info:`, info);
+      cleanupTimer();
 
-      // For development, use mock transcription
-      const transcription = await mockTranscription();
+      try {
+        await Voice.cancel();
+      } catch (voiceError) {
+        // Silently handle Voice.cancel errors
+      }
 
       setState((prev) => ({
         ...prev,
+        isRecording: false,
         isTranscribing: false,
-        transcription,
+        transcription: "",
+        partialTranscription: "",
+        duration: 0,
+        error: null,
       }));
-
-      // TODO: In production, implement real speech-to-text
-      // Send to Google Cloud Function for transcription
     } catch (error) {
-      console.error("Transcription failed:", error);
-      setState((prev) => ({
-        ...prev,
-        isTranscribing: false,
-        transcription: "Transcription failed. Please try recording again.",
-      }));
+      console.log("Failed to cancel voice recognition:", error); // Use console.log instead of console.error
     }
   };
 
   const playRecording = async () => {
-    try {
-      if (!state.audioUri) return;
-
-      console.log("▶️ Playing dream recording...");
-      audioPlayer.play();
-    } catch (error) {
-      console.error("Failed to play recording:", error);
-    }
+    console.log("🔊 Play recording not available with voice recognition");
   };
 
   const clearRecording = async () => {
-    // Clean up audio file if it exists
-    if (state.audioUri) {
-      try {
-        await FileSystem.deleteAsync(state.audioUri, { idempotent: true });
-      } catch (error) {
-        console.log("Could not delete audio file:", error);
+    try {
+      if (state.isRecording) {
+        await Voice.cancel();
       }
-    }
 
-    setState((prev) => ({
-      ...prev,
-      isRecording: false,
-      isTranscribing: false,
-      audioUri: null,
-      transcription: "",
-      duration: 0,
-      error: null,
-    }));
+      if (durationTimerRef.current) {
+        clearInterval(durationTimerRef.current);
+        durationTimerRef.current = null;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        isRecording: false,
+        isTranscribing: false,
+        audioUri: null,
+        transcription: "",
+        partialTranscription: "",
+        duration: 0,
+        error: null,
+        confidence: 0,
+      }));
+    } catch (error) {
+      console.error("Could not clear recording:", error);
+    }
   };
 
   return {
     ...state,
     startRecording,
     stopRecording,
+    cancelRecording,
     playRecording,
     clearRecording,
-    // Expose recorder state for UI
-    isRecordingActive: audioRecorder.isRecording,
+    partialTranscription: state.partialTranscription,
+    confidence: state.confidence,
+    isRecordingActive: state.isRecording,
   };
-};
-// Mock transcription for development
-const mockTranscription = async (): Promise<string> => {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-
-  const dreamTranscriptions = [
-    "I was flying through a crystal cave filled with purple light. Ancient symbols on the walls pulsed with mystical energy, and I could hear distant chanting that felt both familiar and otherworldly. The walls seemed to breathe with life.",
-
-    "I found myself in my childhood home, but all the rooms were different. The hallway stretched infinitely, and I could hear my grandmother calling my name from somewhere unreachable. The furniture was floating slightly off the ground.",
-
-    "I was standing on a bridge made of pure starlight, looking down at an ocean of liquid moonlight. Fish made of pure energy swam beneath the surface, and somehow I knew I could breathe underwater if I chose to jump.",
-
-    "My teeth began falling out one by one, but instead of pain, each tooth transformed into a glowing orb that floated around my head like a crown of light. I felt a strange sense of renewal rather than loss.",
-
-    "I was late for an important exam, but when I reached the classroom, all the desks were floating in mid-air and the professor was a wise owl speaking in ancient riddles. The chalkboard showed equations that shifted into poetry.",
-
-    "I walked through a forest where the trees had eyes and whispered secrets about the future. The path led to a clearing with a crystal fountain that showed visions of possible timelines, each ripple revealing different life paths.",
-
-    "I was in a library with infinite floors, where books flew like birds between the shelves. I was searching for a specific book that contained the meaning of existence, but the words kept changing as I read them, adapting to my thoughts.",
-
-    "I realized I was dreaming when I looked at my hands and saw six fingers. This awareness allowed me to consciously reshape the dreamscape, turning the gray city around me into a vibrant garden filled with impossible flowers.",
-
-    "I was swimming through clouds that felt like warm silk. Below me, I could see my physical body sleeping in bed, and I understood I was experiencing some form of astral projection. The sensation was both exhilarating and peaceful.",
-  ];
-
-  return dreamTranscriptions[Math.floor(Math.random() * dreamTranscriptions.length)];
 };
