@@ -4,13 +4,11 @@
  */
 
 import { Text as DefaultText, View as DefaultView } from "react-native";
-
-import Colors from "@/constants/Colors";
-import { useColorScheme } from "@/hooks/useColorScheme";
+import { theme } from "@/constants/Colors";
 
 type ThemeProps = {
-  lightColor?: string;
-  darkColor?: string;
+  lightColor?: string; // Kept for backward compatibility but ignored
+  darkColor?: string; // Kept for backward compatibility but ignored
 };
 
 export type TextProps = ThemeProps & DefaultText["props"];
@@ -18,15 +16,15 @@ export type ViewProps = ThemeProps & DefaultView["props"];
 
 export function useThemeColor(
   props: { light?: string; dark?: string },
-  colorName: keyof typeof Colors.light & keyof typeof Colors.dark,
+  colorName: keyof typeof theme,
 ) {
-  const theme = useColorScheme() ?? "light";
-  const colorFromProps = props[theme];
+  // Use darkColor prop if provided (for backward compatibility)
+  const colorFromProps = props.dark;
 
   if (colorFromProps) {
     return colorFromProps;
   } else {
-    return Colors[theme][colorName];
+    return theme[colorName]; // Use unified theme directly
   }
 }
 
