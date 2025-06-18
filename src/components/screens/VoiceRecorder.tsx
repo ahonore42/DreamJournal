@@ -1,48 +1,45 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { View, StyleSheet, Animated } from "react-native";
+import { View, StyleSheet, Animated, Alert, useColorScheme } from "react-native";
 import { Text } from "@/components/layout/Themed";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
+import { useDreamStore } from "@/hooks/useDreamStore";
 import Colors from "@/constants/Colors";
-import { useColorScheme } from "@/hooks/useColorScheme";
 import { RecordingButton } from "../ui/RecordingButton";
 import { Button } from "../ui/Button";
 
 export const VoiceRecorder: React.FC = () => {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
-
   const {
     isRecording,
     isTranscribing,
     audioUri,
     transcription,
+    partialTranscription,
     duration,
     error,
+    confidence,
     startRecording,
     stopRecording,
-    playRecording,
     clearRecording,
+    playRecording,
   } = useVoiceRecording();
 
-  // Animated values for breathing (while recording) and pulsing (while transcribing)
+  const { addDreamFromVoice } = useDreamStore();
+
   const pulseAnim = React.useRef(new Animated.Value(1)).current;
   const breathingAnim = React.useRef(new Animated.Value(1)).current;
-
-  // Animated values for overall button and transcript transitions
   const buttonOpacity = React.useRef(new Animated.Value(1)).current;
   const buttonScale = React.useRef(new Animated.Value(1)).current;
   const transcriptOpacity = React.useRef(new Animated.Value(0)).current;
   const transcriptTranslateY = React.useRef(new Animated.Value(50)).current;
+  const partialOpacity = React.useRef(new Animated.Value(0)).current;
 
-  // ButtonKey state - we don't want to re-mount the button
   const [forceButtonDefaultColor, setForceButtonDefaultColor] = useState(false);
-
-  // Track if we've already faded out for this transcription
   const hasFadedOutRef = useRef(false);
-
-  // Store animation references to ensure they persist
   const breathingAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
   const pulseAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? "light"];
 
   const fadeOutButton = useCallback(() => {
     Animated.parallel([
@@ -68,7 +65,6 @@ export const VoiceRecorder: React.FC = () => {
       }),
     ]).start((finished) => {
       if (finished) {
-        // Reset color while invisible
         setTimeout(() => {
           setForceButtonDefaultColor(true);
         }, 50);
@@ -77,7 +73,6 @@ export const VoiceRecorder: React.FC = () => {
   }, [buttonOpacity, buttonScale, transcriptOpacity, transcriptTranslateY]);
 
   const fadeInButton = useCallback(() => {
-    // Reset force flag before fading in
     setForceButtonDefaultColor(false);
 
     Animated.parallel([
@@ -112,37 +107,73 @@ export const VoiceRecorder: React.FC = () => {
     }
   };
 
-  const handleClearRecording = () => {
+  const handleSaveDream = useCallback(() => {
+    if (transcription && error !== "speech_error") {
+      try {
+        const dreamId = addDreamFromVoice(transcription, confidence, duration);
+        console.log(`✨ Dream saved with ID: ${dreamId}`);
+
+        Alert.alert("Dream Saved ✨", "Your sacred dream has been added to your journal.", [
+          {
+            text: "View Timeline",
+            onPress: () => {
+              console.log("Navigate to timeline");
+            },
+          },
+          {
+            text: "Record Another",
+            onPress: handleClearRecording,
+            style: "default",
+          },
+        ]);
+      } catch (error) {
+        console.error("Failed to save dream:", error);
+        Alert.alert("Save Failed", "There was an issue saving your dream. Please try again.", [
+          { text: "OK" },
+        ]);
+      }
+    }
+  }, [transcription, confidence, duration, addDreamFromVoice, error]);
+
+  const handleClearRecording = useCallback(() => {
     clearRecording();
     setForceButtonDefaultColor(true);
-
-    // Reset hasFadedOutRef
     hasFadedOutRef.current = false;
 
-    // Set initial hidden state immediately (button should be at scale 0.8 when hidden)
     buttonOpacity.setValue(0);
     buttonScale.setValue(0.8);
     transcriptOpacity.setValue(1);
     transcriptTranslateY.setValue(0);
 
-    // Animate to visible state
     setTimeout(() => {
       fadeInButton();
     }, 50);
-  };
+  }, [clearRecording, fadeInButton]);
 
-  // Determine if the button should be explicitly disabled
   const isButtonTrulyDisabled = React.useMemo(() => {
     return !!transcription && !isTranscribing;
   }, [transcription, isTranscribing]);
 
-  // Breathing animation
+  useEffect(() => {
+    if (partialTranscription && isRecording) {
+      Animated.timing(partialOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      Animated.timing(partialOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [partialTranscription, isRecording]);
+
   useEffect(() => {
     if (isRecording) {
-      // Reset to starting value
       breathingAnim.setValue(1);
 
-      // Create the breathing animation
       breathingAnimationRef.current = Animated.loop(
         Animated.sequence([
           Animated.timing(breathingAnim, {
@@ -176,10 +207,8 @@ export const VoiceRecorder: React.FC = () => {
     }
   }, [isRecording, breathingAnim]);
 
-  // Pulse animation
   useEffect(() => {
     if (isTranscribing) {
-      // Reset to starting value
       pulseAnim.setValue(1);
 
       pulseAnimationRef.current = Animated.loop(
@@ -215,22 +244,33 @@ export const VoiceRecorder: React.FC = () => {
     }
   }, [isTranscribing, pulseAnim]);
 
-  // Fade out trigger
   useEffect(() => {
-    if (transcription && !isTranscribing && !hasFadedOutRef.current) {
+    if (transcription && !isTranscribing && !isRecording && !hasFadedOutRef.current) {
       hasFadedOutRef.current = true;
       fadeOutButton();
     }
     if (!transcription) {
       hasFadedOutRef.current = false;
     }
-  }, [transcription, isTranscribing, fadeOutButton]);
+  }, [transcription, isTranscribing, isRecording, fadeOutButton]);
+
+  const getCurrentTranscriptionText = () => {
+    if (transcription) return transcription;
+    if (partialTranscription && isRecording) return partialTranscription;
+    return "";
+  };
+
+  const displayText = getCurrentTranscriptionText();
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
 
   return (
     <View style={styles.container}>
-      {/* Top Content Area - Transcription and Controls */}
       <View style={styles.topContent}>
-        {/* Animated Transcription Display */}
         <Animated.View
           style={[
             styles.transcriptionContainer,
@@ -240,7 +280,7 @@ export const VoiceRecorder: React.FC = () => {
             },
           ]}
         >
-          {(transcription || isTranscribing) && (
+          {(displayText || isTranscribing) && (
             <View style={styles.transcriptionArea}>
               <Text
                 style={[
@@ -256,7 +296,7 @@ export const VoiceRecorder: React.FC = () => {
                 ✨ Dream Transcription
               </Text>
 
-              {isTranscribing ? (
+              {isTranscribing && !transcription ? (
                 <View style={styles.transcribing}>
                   <Text
                     style={[
@@ -273,19 +313,9 @@ export const VoiceRecorder: React.FC = () => {
                   </Text>
                 </View>
               ) : (
-                <View style={styles.transcribing}>
-                  <Text
-                    style={[
-                      styles.dreamText,
-                      {
-                        color: colors.text,
-                        textShadowColor: colors.secondary,
-                        textShadowOffset: { width: 0, height: 0 },
-                        textShadowRadius: 3,
-                      },
-                    ]}
-                  >
-                    {transcription}
+                <View style={styles.dreamTextContainer}>
+                  <Text style={[styles.dreamText, error === "speech_error" && styles.errorText]}>
+                    {displayText}
                   </Text>
                 </View>
               )}
@@ -293,36 +323,31 @@ export const VoiceRecorder: React.FC = () => {
           )}
         </Animated.View>
 
-        {/* Playback Controls */}
-        {audioUri && !isTranscribing && transcription && (
+        {isRecording && partialTranscription && (
           <Animated.View
             style={[
-              styles.playbackControls,
+              styles.partialTranscriptionOverlay,
               {
-                opacity: transcriptOpacity,
-                transform: [{ translateY: transcriptTranslateY }],
+                opacity: partialOpacity,
+                backgroundColor: "rgba(0, 0, 0, 0.9)",
+                borderColor: colors.accent,
               },
             ]}
           >
-            <Button
-              title="▶️ Replay Dream"
-              onPress={playRecording}
-              variant="primary"
-              size="medium"
-            />
-
-            <Button
-              title="🔄 Record Again"
-              onPress={handleClearRecording}
-              variant="secondary"
-              ghost
-              size="medium"
-            />
+            <Text
+              style={[
+                styles.partialText,
+                {
+                  color: colors.accent,
+                },
+              ]}
+            >
+              {partialTranscription}
+            </Text>
           </Animated.View>
         )}
 
-        {/* Error Display */}
-        {error && (
+        {error && error !== "speech_error" && (
           <View
             style={[
               styles.errorContainer,
@@ -340,86 +365,133 @@ export const VoiceRecorder: React.FC = () => {
         )}
       </View>
 
-      {/* Bottom Half - Sacred Recording Interface */}
       <View style={styles.bottomHalf}>
-        {/* Recording Status */}
-        <View style={styles.statusArea}>
-          <Text
+        {transcription && !isTranscribing && !isRecording ? (
+          <Animated.View
             style={[
-              styles.status,
+              styles.completionArea,
               {
-                color: colors.primary,
-                textShadowColor: colors.primary,
-                textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 6,
+                opacity: transcriptOpacity,
+                transform: [{ translateY: transcriptTranslateY }],
               },
             ]}
           >
-            {isRecording
-              ? "Recording your sacred dream..."
-              : isTranscribing
-                ? "Converting speech to text..."
-                : audioUri && transcription
-                  ? "Dream transcription complete"
-                  : "Touch the sacred geometry to begin"}
-          </Text>
-
-          {isRecording && (
             <Text
               style={[
-                styles.hint,
+                styles.completionText,
                 {
-                  color: colors.text,
-                  textShadowColor: colors.secondary,
+                  color: error === "speech_error" ? "#FF6B6B" : colors.primary,
+                  textShadowColor: error === "speech_error" ? "#F44336" : colors.primary,
                   textShadowOffset: { width: 0, height: 0 },
-                  textShadowRadius: 2,
+                  textShadowRadius: 6,
                 },
               ]}
             >
-              Speak naturally. Breathe with the rhythm.
+              {error === "speech_error" ? "Recording failed" : "Dream transcription complete"}
             </Text>
-          )}
 
-          {duration > 0 && !isRecording && !transcription && (
-            <Text
+            {confidence > 0 && error !== "speech_error" && (
+              <Text style={styles.bottomConfidenceText}>
+                Confidence: {Math.round(confidence * 100)}%
+              </Text>
+            )}
+
+            <View style={styles.bottomButtons}>
+              <Button
+                title={error === "speech_error" ? "❌ Cannot Save Error" : "💾 Save Dream"}
+                onPress={handleSaveDream}
+                variant="sacred"
+                size="large"
+                disabled={error === "speech_error"}
+              />
+
+              <Button
+                title="🔄 Record Again"
+                onPress={handleClearRecording}
+                variant="secondary"
+                ghost
+                size="large"
+              />
+            </View>
+          </Animated.View>
+        ) : (
+          <>
+            <View style={styles.statusArea}>
+              <Text
+                style={[
+                  styles.status,
+                  {
+                    color: colors.primary,
+                    textShadowColor: colors.primary,
+                    textShadowOffset: { width: 0, height: 0 },
+                    textShadowRadius: 6,
+                  },
+                ]}
+              >
+                {isRecording
+                  ? "Listening to your sacred dreams..."
+                  : isTranscribing
+                    ? "Processing your words..."
+                    : "Touch the sacred geometry to begin"}
+              </Text>
+
+              {isRecording && (
+                <>
+                  <Text
+                    style={[
+                      styles.hint,
+                      {
+                        color: colors.text,
+                        textShadowColor: colors.secondary,
+                        textShadowOffset: { width: 0, height: 0 },
+                        textShadowRadius: 2,
+                      },
+                    ]}
+                  >
+                    Speak naturally. Your words are being captured in real-time.
+                  </Text>
+
+                  <Text
+                    style={[
+                      styles.duration,
+                      {
+                        color: colors.accent,
+                        textShadowColor: colors.accent,
+                        textShadowOffset: { width: 0, height: 0 },
+                        textShadowRadius: 2,
+                      },
+                    ]}
+                  >
+                    {formatDuration(duration)}
+                  </Text>
+                </>
+              )}
+            </View>
+
+            <Animated.View
               style={[
-                styles.duration,
+                styles.recordingArea,
                 {
-                  color: colors.text,
-                  textShadowColor: colors.secondary,
-                  textShadowOffset: { width: 0, height: 0 },
-                  textShadowRadius: 2,
+                  opacity: buttonOpacity,
+                  transform: [{ scale: buttonScale }],
                 },
               ]}
+              pointerEvents={isButtonTrulyDisabled ? "none" : "auto"}
             >
-              Recording duration: {duration} seconds
-            </Text>
-          )}
-        </View>
-
-        {/* Animated Sacred Recording Button - NO KEY PROP */}
-        <Animated.View
-          style={[
-            styles.recordingArea,
-            {
-              opacity: buttonOpacity,
-              transform: [{ scale: buttonScale }],
-            },
-          ]}
-          pointerEvents={isButtonTrulyDisabled ? "none" : "auto"}
-        >
-          <RecordingButton
-            isRecording={isRecording}
-            isTranscribing={isTranscribing}
-            onPress={handleRecordingPress}
-            breathingAnim={breathingAnim}
-            pulseAnim={pulseAnim}
-            containerScaleAnim={buttonScale}
-            isButtonDisabled={isButtonTrulyDisabled}
-            transcriptionExists={!!transcription}
-            forceDefaultColor={forceButtonDefaultColor}
-          />
-        </Animated.View>
+              <RecordingButton
+                isRecording={isRecording}
+                isTranscribing={isTranscribing}
+                onPress={handleRecordingPress}
+                breathingAnim={breathingAnim}
+                pulseAnim={pulseAnim}
+                containerScaleAnim={buttonScale}
+                isButtonDisabled={isButtonTrulyDisabled}
+                transcriptionExists={!!transcription}
+                forceDefaultColor={forceButtonDefaultColor}
+              />
+            </Animated.View>
+          </>
+        )}
       </View>
     </View>
   );
@@ -465,39 +537,13 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     opacity: 0.9,
     letterSpacing: 0.3,
+    marginBottom: 8,
   },
   duration: {
-    fontSize: 14,
+    fontSize: 16,
     textAlign: "center",
-    opacity: 0.9,
-    letterSpacing: 0.3,
-  },
-  playbackControls: {
-    flexDirection: "row",
-    gap: 16,
-    justifyContent: "center",
-    marginTop: 20,
-    paddingHorizontal: 20,
-  },
-  playButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  playButtonText: {
-    color: "#FFFFFF",
-    fontSize: 16,
     fontWeight: "600",
-  },
-  clearButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 2,
-  },
-  clearButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
+    letterSpacing: 1,
   },
   transcriptionArea: {
     flex: 1,
@@ -519,9 +565,45 @@ const styles = StyleSheet.create({
     fontSize: 16,
     textAlign: "center",
   },
+  dreamTextContainer: {
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.3)",
+  },
   dreamText: {
+    fontSize: 18,
+    lineHeight: 28,
+    fontWeight: "500",
+    letterSpacing: 0.3,
+    color: "#FFFFFF",
+    textAlign: "left",
+  },
+  errorText: {
+    color: "#FF6B6B",
+    fontStyle: "italic",
+    textAlign: "center",
+  },
+  partialTranscriptionOverlay: {
+    position: "absolute",
+    bottom: 120,
+    left: 20,
+    right: 20,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    shadowColor: "#00D4FF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  partialText: {
     fontSize: 16,
-    lineHeight: 26,
+    textAlign: "center",
+    fontStyle: "italic",
+    fontWeight: "500",
   },
   errorContainer: {
     backgroundColor: "rgba(244, 67, 54, 0.2)",
@@ -531,11 +613,30 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 16,
   },
-  errorText: {
-    color: "#FF6B6B",
+  completionArea: {
+    flex: 1,
+    justifyContent: "flex-end",
+    alignItems: "center",
+    paddingBottom: 40,
+  },
+  completionText: {
+    fontSize: 18,
+    fontWeight: "600",
     textAlign: "center",
-    textShadowColor: "#F44336",
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  bottomConfidenceText: {
+    fontSize: 14,
+    textAlign: "center",
+    color: "#9CA3AF",
+    opacity: 0.8,
+    marginBottom: 32,
+    fontStyle: "italic",
+  },
+  bottomButtons: {
+    width: "100%",
+    paddingHorizontal: 20,
+    gap: 16,
   },
 });
