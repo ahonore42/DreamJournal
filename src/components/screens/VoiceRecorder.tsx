@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { View, StyleSheet, Animated, Alert, useColorScheme } from "react-native";
+import { View, StyleSheet, Animated, Alert } from "react-native";
 import { Text } from "@/components/layout/Themed";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useDreamStore } from "@/hooks/useDreamStore";
-import Colors from "@/constants/Colors";
+import { theme } from "@/constants/Colors";
 import { RecordingButton } from "../ui/RecordingButton";
 import { Button } from "../ui/Button";
 
@@ -37,9 +37,6 @@ export const VoiceRecorder: React.FC = () => {
   const hasFadedOutRef = useRef(false);
   const breathingAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
   const pulseAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
-
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
 
   const fadeOutButton = useCallback(() => {
     Animated.parallel([
@@ -286,8 +283,8 @@ export const VoiceRecorder: React.FC = () => {
                 style={[
                   styles.transcriptionTitle,
                   {
-                    color: colors.secondary,
-                    textShadowColor: colors.secondary,
+                    color: theme.secondary,
+                    textShadowColor: theme.secondary,
                     textShadowOffset: { width: 0, height: 0 },
                     textShadowRadius: 8,
                   },
@@ -302,8 +299,8 @@ export const VoiceRecorder: React.FC = () => {
                     style={[
                       styles.transcribingText,
                       {
-                        color: colors.text,
-                        textShadowColor: colors.primary,
+                        color: theme.text,
+                        textShadowColor: theme.primary,
                         textShadowOffset: { width: 0, height: 0 },
                         textShadowRadius: 4,
                       },
@@ -330,7 +327,7 @@ export const VoiceRecorder: React.FC = () => {
               {
                 opacity: partialOpacity,
                 backgroundColor: "rgba(0, 0, 0, 0.9)",
-                borderColor: colors.accent,
+                borderColor: theme.accent,
               },
             ]}
           >
@@ -338,7 +335,7 @@ export const VoiceRecorder: React.FC = () => {
               style={[
                 styles.partialText,
                 {
-                  color: colors.accent,
+                  color: theme.accent,
                 },
               ]}
             >
@@ -380,8 +377,8 @@ export const VoiceRecorder: React.FC = () => {
               style={[
                 styles.completionText,
                 {
-                  color: error === "speech_error" ? "#FF6B6B" : colors.primary,
-                  textShadowColor: error === "speech_error" ? "#F44336" : colors.primary,
+                  color: error === "speech_error" ? "#FF6B6B" : theme.primary,
+                  textShadowColor: error === "speech_error" ? "#F44336" : theme.primary,
                   textShadowOffset: { width: 0, height: 0 },
                   textShadowRadius: 6,
                 },
@@ -421,8 +418,8 @@ export const VoiceRecorder: React.FC = () => {
                 style={[
                   styles.status,
                   {
-                    color: colors.primary,
-                    textShadowColor: colors.primary,
+                    color: theme.primary,
+                    textShadowColor: theme.primary,
                     textShadowOffset: { width: 0, height: 0 },
                     textShadowRadius: 6,
                   },
@@ -441,8 +438,8 @@ export const VoiceRecorder: React.FC = () => {
                     style={[
                       styles.hint,
                       {
-                        color: colors.text,
-                        textShadowColor: colors.secondary,
+                        color: theme.text,
+                        textShadowColor: theme.secondary,
                         textShadowOffset: { width: 0, height: 0 },
                         textShadowRadius: 2,
                       },
@@ -455,8 +452,8 @@ export const VoiceRecorder: React.FC = () => {
                     style={[
                       styles.duration,
                       {
-                        color: colors.accent,
-                        textShadowColor: colors.accent,
+                        color: theme.accent,
+                        textShadowColor: theme.accent,
                         textShadowOffset: { width: 0, height: 0 },
                         textShadowRadius: 2,
                       },

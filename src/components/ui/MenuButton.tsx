@@ -2,8 +2,7 @@ import React, { useCallback } from "react";
 import { TouchableOpacity, StyleSheet } from "react-native";
 import Animated, { useAnimatedStyle, withTiming } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
-import { useColorScheme } from "@/hooks/useColorScheme";
-import Colors from "@/constants/Colors";
+import { theme } from "@/constants/Colors";
 
 interface MenuButtonProps {
   onPress: () => void;
@@ -11,9 +10,6 @@ interface MenuButtonProps {
 }
 
 export const MenuButton: React.FC<MenuButtonProps> = ({ onPress, isMenuOpen }) => {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
-
   // Subtle but extremely satisfying haptic feedback
   const triggerHapticFeedback = useCallback(async () => {
     try {
@@ -107,20 +103,16 @@ export const MenuButton: React.FC<MenuButtonProps> = ({ onPress, isMenuOpen }) =
           styles.container,
           containerStyle,
           {
-            shadowColor: colors.primary,
+            shadowColor: theme.primary,
             shadowOffset: { width: 0, height: 2 },
             shadowRadius: 4,
             elevation: 4,
           },
         ]}
       >
-        <Animated.View style={[styles.line, { backgroundColor: colors.primary }, topLineStyle]} />
-        <Animated.View
-          style={[styles.line, { backgroundColor: colors.primary }, middleLineStyle]}
-        />
-        <Animated.View
-          style={[styles.line, { backgroundColor: colors.primary }, bottomLineStyle]}
-        />
+        <Animated.View style={[styles.line, { backgroundColor: theme.primary }, topLineStyle]} />
+        <Animated.View style={[styles.line, { backgroundColor: theme.primary }, middleLineStyle]} />
+        <Animated.View style={[styles.line, { backgroundColor: theme.primary }, bottomLineStyle]} />
       </Animated.View>
     </TouchableOpacity>
   );

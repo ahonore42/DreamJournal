@@ -1,7 +1,6 @@
 import React from "react";
 import { Text, StyleSheet, TextStyle } from "react-native";
-import { useColorScheme } from "@/hooks/useColorScheme";
-import Colors from "@/constants/Colors";
+import { theme } from "@/constants/Colors";
 
 export interface StyledTextProps {
   children: React.ReactNode;
@@ -11,13 +10,10 @@ export interface StyledTextProps {
 }
 
 export function StyledText({ children, variant = "body", align = "left", style }: StyledTextProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
-
   const textStyle = [
     styles.base,
     styles[variant],
-    { color: colors.text },
+    { color: theme.text },
     { textAlign: align },
     style,
   ];

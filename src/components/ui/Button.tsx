@@ -1,8 +1,7 @@
 import React, { useCallback, useState } from "react";
 import { StyleSheet, ViewStyle, View, Pressable, LayoutChangeEvent } from "react-native";
 import { Text } from "@/components/layout/Themed";
-import Colors from "@/constants/Colors";
-import { useColorScheme } from "@/hooks/useColorScheme";
+import { theme } from "@/constants/Colors";
 import * as Haptics from "expo-haptics";
 import Animated, {
   useSharedValue,
@@ -33,9 +32,6 @@ export function Button({
   style,
   disabled = false,
 }: ButtonProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
-
   // Track button dimensions
   const [buttonDimensions, setButtonDimensions] = useState({ width: 0, height: 0 });
 
@@ -122,13 +118,13 @@ export function Button({
   const getButtonColor = () => {
     switch (variant) {
       case "primary":
-        return colors.primary;
+        return theme.primary;
       case "secondary":
-        return colors.secondary;
+        return theme.secondary;
       case "sacred":
-        return colors.accent;
+        return theme.accent;
       default:
-        return colors.primary;
+        return theme.primary;
     }
   };
 

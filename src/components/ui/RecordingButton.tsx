@@ -1,9 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { View, StyleSheet, Animated, TouchableOpacity } from "react-native";
 import * as Haptics from "expo-haptics";
-import Colors from "@/constants/Colors";
-import { useColorScheme } from "@/hooks/useColorScheme";
 import { FlowerOfLifeSVG } from "../atoms/FlowerOfLifeSVG";
+import { theme } from "@/constants/Colors";
 
 /**
  * Recording Button Component with Haptic Feedback.
@@ -27,11 +26,8 @@ export const RecordingButton: React.FC<{
   transcriptionExists,
   forceDefaultColor = false,
 }) => {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
-
-  const [currentDisplayColor, setCurrentDisplayColor] = useState(colors.primary);
-  const [containerBorderColor, setContainerBorderColor] = useState(colors.primary);
+  const [currentDisplayColor, setCurrentDisplayColor] = useState<string>(theme.primary);
+  const [containerBorderColor, setContainerBorderColor] = useState<string>(theme.primary);
   const [triggerRipple, setTriggerRipple] = useState(false);
 
   // Create a simple scale animation
@@ -75,18 +71,18 @@ export const RecordingButton: React.FC<{
 
   // Helper function to determine the target color based on the current state
   const getTargetColor = useCallback(() => {
-    if (forceDefaultColor) return colors.primary;
-    if (isRecording) return colors.accent;
-    if (isTranscribing) return colors.secondary;
-    if (transcriptionExists) return colors.secondary;
-    return colors.primary;
+    if (forceDefaultColor) return theme.primary;
+    if (isRecording) return theme.accent;
+    if (isTranscribing) return theme.secondary;
+    if (transcriptionExists) return theme.secondary;
+    return theme.primary;
   }, [
     isRecording,
     isTranscribing,
     transcriptionExists,
     forceDefaultColor,
-    colors.primary,
-    colors.accent,
+    theme.primary,
+    theme.accent,
   ]);
 
   // Calculate button state styling
@@ -97,7 +93,7 @@ export const RecordingButton: React.FC<{
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 4 },
       elevation: 12,
-      backgroundColor: colorScheme === "dark" ? "#0A0A1A" : "#FFFFFF",
+      backgroundColor: "#0A0A1A",
     };
 
     return {
@@ -108,16 +104,12 @@ export const RecordingButton: React.FC<{
       elevation: isRecording ? 20 : isTranscribing ? 16 : 12,
       shadowColor: currentDisplayColor,
       backgroundColor: isRecording
-        ? colorScheme === "dark"
-          ? "#1A1A2E"
-          : "#F8F9FA"
+        ? "#1A1A2E"
         : isTranscribing
-          ? colorScheme === "dark"
-            ? "#2A2A1A"
-            : "#FFFEF7"
+          ? "#2A2A1A"
           : baseState.backgroundColor,
     };
-  }, [isRecording, isTranscribing, currentDisplayColor, colorScheme]);
+  }, [isRecording, isTranscribing, currentDisplayColor]);
 
   const buttonState = getButtonState();
 
@@ -158,8 +150,8 @@ export const RecordingButton: React.FC<{
   useEffect(() => {
     // Handle forced color reset
     if (forceDefaultColor) {
-      setCurrentDisplayColor(colors.primary);
-      setContainerBorderColor(colors.primary);
+      setCurrentDisplayColor(theme.primary);
+      setContainerBorderColor(theme.primary);
       setTriggerRipple(false);
       if (containerTimeoutRef.current) {
         clearTimeout(containerTimeoutRef.current);
@@ -204,7 +196,7 @@ export const RecordingButton: React.FC<{
     currentDisplayColor,
     transcriptionExists,
     forceDefaultColor,
-    colors.primary,
+    theme.primary,
     getTargetColor,
   ]);
 

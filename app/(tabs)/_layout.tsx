@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Tabs } from "expo-router";
 import { View } from "react-native";
-import Colors from "@/constants/Colors";
-import { useColorScheme } from "@/hooks/useColorScheme";
+import { theme } from "@/constants/Colors";
 import { useClientOnlyValue } from "@/hooks/useClientOnlyValue";
 import { NavigationMenu } from "@/components/layout/NavigationMenu";
 import { MenuButton } from "@/components/ui/MenuButton";
@@ -16,7 +15,6 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const toggleMenu = () => {
@@ -34,7 +32,7 @@ export default function TabLayout() {
     <>
       <Tabs
         screenOptions={{
-          tabBarActiveTintColor: Colors[colorScheme ?? "light"].tint,
+          tabBarActiveTintColor: theme.tint,
           headerShown: useClientOnlyValue(false, true),
         }}
       >

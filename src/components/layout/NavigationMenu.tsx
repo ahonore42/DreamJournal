@@ -14,8 +14,7 @@ import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyledText } from "@/components/ui/StyledText";
 import { useAuth } from "@/hooks/useAuth";
-import { useColorScheme } from "@/hooks/useColorScheme";
-import Colors from "@/constants/Colors";
+import { theme } from "@/constants/Colors";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MENU_WIDTH = SCREEN_WIDTH * 0.8;
@@ -44,8 +43,6 @@ interface MenuItem {
 export const NavigationMenu: React.FC<NavigationMenuProps> = ({ isVisible, onClose }) => {
   const router = useRouter();
   const { user, signOut } = useAuth();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? "light"];
   const insets = useSafeAreaInsets();
 
   // Calculate total header height including status bar
@@ -82,28 +79,28 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ isVisible, onClo
       title: "Sacred Space",
       icon: "moon-o",
       route: "/(tabs)",
-      color: colors.primary,
+      color: theme.primary,
     },
     {
       id: "timeline",
       title: "Dream Timeline",
       icon: "calendar",
       route: "/(tabs)/two",
-      color: colors.secondary,
+      color: theme.secondary,
     },
     {
       id: "insights",
       title: "Sacred Insights",
       icon: "eye",
       route: "/(tabs)/insights",
-      color: colors.accent,
+      color: theme.accent,
     },
     {
       id: "profile",
       title: "Spiritual Profile",
       icon: "user",
       route: "/(tabs)/profile",
-      color: colors.violet,
+      color: theme.violet,
     },
     {
       id: "divider",
@@ -115,14 +112,14 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ isVisible, onClo
       title: "Mystical Settings",
       icon: "cog",
       action: () => Alert.alert("Settings", "Sacred settings coming soon..."),
-      color: colors.emerald,
+      color: theme.emerald,
     },
     {
       id: "help",
       title: "Cosmic Guidance",
       icon: "question-circle",
       action: () => Alert.alert("Help", "Spiritual guidance coming soon..."),
-      color: colors.aquaBlue,
+      color: theme.aquaBlue,
     },
     {
       id: "sign-out",
@@ -248,7 +245,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ isVisible, onClo
                 style={[
                   styles.menuItem,
                   {
-                    borderLeftColor: item.color || colors.primary,
+                    borderLeftColor: item.color || theme.primary,
                   },
                 ]}
                 onPress={() => handleItemPress(item)}
@@ -258,7 +255,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ isVisible, onClo
                   <FontAwesome
                     name={item.icon as any}
                     size={20}
-                    color={item.color || colors.primary}
+                    color={item.color || theme.primary}
                     style={styles.menuItemIcon}
                   />
                   <StyledText variant="body" style={styles.menuItemText}>
@@ -269,7 +266,7 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ isVisible, onClo
                 <FontAwesome
                   name="chevron-right"
                   size={14}
-                  color={colors.text}
+                  color={theme.text}
                   style={styles.chevron}
                 />
               </TouchableOpacity>
