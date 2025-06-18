@@ -1,58 +1,56 @@
-// Cosmic Deep Spiritual Color Palette
-// Blending deep blues, electric blues, emeralds and violets/pinks
+// Global theme
+export const theme = {
+  // Core colors
+  text: "#E5E7EB",
+  background: "#0A0E1A", // Cosmic deep space
+  surface: "#1A1D2E", // Deep cosmic surface
+  surfaceVariant: "#252A3D", // Darker cosmic variant
 
-const tintColorLight = "#3B82F6";
-const tintColorDark = "#00D4FF"; // Electric blue
+  // Brand colors
+  primary: "#3359c5", // Cosmic blue
+  secondary: "#8B5CF6", // Deep purple
+  accent: "#00D4FF", // Electric cyan-blue
+  sacred: "#E5EB83", // Sacred gold
 
-export default {
-  light: {
-    text: "#1F2937",
-    background: "#FFFFFF",
-    tint: tintColorLight,
-    tabIconDefault: "#9CA3AF",
-    tabIconSelected: tintColorLight,
+  // Extended palette
+  deepBlue: "#1E3A8A",
+  brightBlue: "#3B82F6",
+  aquaBlue: "#06B6D4",
+  emerald: "#10B981",
+  jade: "#059669",
+  violet: "#C084FC",
+  magenta: "#EC4899",
+  rose: "#F472B6",
 
-    accent: "#00D4FF", // Electric cyan-blue
-    primary: "#3359c5", // Cosmic blue
-    secondary: "#8B5CF6", // Deep purple
-    surface: "#F8FAFC",
-    surfaceVariant: "#E2E8F0",
+  // Semantic colors
+  white: "#FFFFFF",
+  spaceBlack: "#000010",
+  error: "#FF6B6B",
+  errorDark: "#F44336",
+  success: "#10B981",
+  warning: "#F59E0B",
 
-    // Additional usable colors
-    brightBlue: "#3B82F6", // Bright blue
-    aquaBlue: "#0891B2", // Aqua blue (darker for light theme)
-    emerald: "#059669", // Emerald green (darker for light theme)
-    jade: "#047857", // Deep jade (darker for light theme)
-    violet: "#8B5CF6", // Violet
-    purple: "#7C3AED", // Deep purple (darker for light theme)
-    magenta: "#DB2777", // Electric pink (darker for light theme)
-    rose: "#EC4899", // Soft pink
-  },
+  // Text variants
+  textSecondary: "#B3B3B3",
+  textTertiary: "#9CA3AF",
+  textMuted: "#6B7280",
 
-  dark: {
-    text: "#E5E7EB",
-    background: "#0A0E1A", // Cosmic deep space
-    tint: tintColorDark,
-    tabIconDefault: "#6B7280",
-    tabIconSelected: tintColorDark,
+  // Navigation
+  tint: "#00D4FF",
+  tabIconDefault: "#6B7280",
+  tabIconSelected: "#00D4FF",
 
-    // Core cosmic palette using the blues
-    accent: "#00D4FF", // Electric cyan-blue
-    primary: "#3359c5", // Cosmic blue
-    secondary: "#8B5CF6", // Deep purple
+  // Overlays
+  overlay: "rgba(0, 0, 0, 0.6)",
+  surfaceOverlay: "rgba(139, 92, 246, 0.1)",
+  borderOverlay: "rgba(139, 92, 246, 0.3)",
+  accentOverlay: "rgba(0, 212, 255, 0.2)",
+  errorOverlay: "rgba(244, 67, 54, 0.2)",
 
-    surface: "#1A1D2E", // Deep cosmic surface
-    surfaceVariant: "#252A3D", // Darker cosmic variant
-
-    // Additional usable colors
-    deepBlue: "#1E3A8A", // Navy cosmic blue
-    brightBlue: "#3B82F6", // Bright blue
-    aquaBlue: "#06B6D4", // Aqua blue
-    emerald: "#10B981", // Emerald green
-    jade: "#059669", // Deep jade
-    violet: "#C084FC", // Bright violet
-    purple: "#8B5CF6", // Deep purple
-    magenta: "#EC4899", // Electric pink
-    rose: "#F472B6", // Soft pink
-  },
-};
+  // Shadows
+  shadowPrimary: "#3359c5",
+  shadowSecondary: "#8B5CF6",
+  shadowAccent: "#00D4FF",
+  shadowError: "#F44336",
+  shadowWhite: "#FFFFFF",
+} as const;
