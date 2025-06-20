@@ -1,26 +1,11 @@
 import React from "react";
-import { StyleSheet, ScrollView } from "react-native";
 import { VoiceRecorder } from "@/components/screens/VoiceRecorder";
-import StarryBackground from "@/components/layout/StarryBackground";
+import { ScreenLayout } from "@/components/layout/ScreenLayout";
 
 export default function TabOneScreen() {
   return (
-    <StarryBackground>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Voice Recording Interface - This is the primary feature */}
-        <VoiceRecorder />
-      </ScrollView>
-    </StarryBackground>
+    <ScreenLayout title="Dream Journal" subtitle="Transcribe your dreams, grow lucid">
+      <VoiceRecorder />
+    </ScreenLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-});

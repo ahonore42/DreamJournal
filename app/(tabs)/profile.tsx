@@ -1,9 +1,10 @@
 import ProfileScreen from "@/components/screens/ProfileScreen";
-import StarryBackground from "@/components/layout/StarryBackground";
+import { ScreenLayout } from "@/components/layout/ScreenLayout";
+
 export default function TabTwoScreen() {
   return (
-    <StarryBackground>
+    <ScreenLayout scroll title="🌟 Sacred Profile" subtitle="Your spiritual journey dashboard">
       <ProfileScreen />
-    </StarryBackground>
+    </ScreenLayout>
   );
 }
