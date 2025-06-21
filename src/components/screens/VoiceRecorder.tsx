@@ -1,11 +1,17 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { View, StyleSheet, Animated, Alert } from "react-native";
+import { View, StyleSheet, Animated, Alert, ScrollView } from "react-native";
 import { Text } from "@/components/layout/Themed";
 import { useVoiceRecording } from "@/hooks/useVoiceRecording";
 import { useDreamStore } from "@/hooks/useDreamStore";
 import { theme } from "@/constants/Colors";
+// UI component imports
 import { RecordingButton } from "../ui/RecordingButton";
 import { Button } from "../ui/Button";
+import { GlowText } from "../ui/GlowText";
+import { TranscriptionArea } from "../ui/TranscriptionArea";
+import { ErrorContainer } from "../ui/ErrorContainer";
+import { ActionGroup } from "../ui/ActionGroup";
+import { StatusIndicator } from "../ui/StatusIndicator";
 
 export const VoiceRecorder: React.FC = () => {
   const {
@@ -37,6 +43,7 @@ export const VoiceRecorder: React.FC = () => {
   const hasFadedOutRef = useRef(false);
   const breathingAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
   const pulseAnimationRef = useRef<Animated.CompositeAnimation | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const fadeOutButton = useCallback(() => {
     Animated.parallel([
@@ -278,45 +285,11 @@ export const VoiceRecorder: React.FC = () => {
           ]}
         >
           {(displayText || isTranscribing) && (
-            <View style={styles.transcriptionArea}>
-              <Text
-                style={[
-                  styles.transcriptionTitle,
-                  {
-                    color: theme.secondary,
-                    textShadowColor: theme.secondary,
-                    textShadowOffset: { width: 0, height: 0 },
-                    textShadowRadius: 8,
-                  },
-                ]}
-              >
-                ✨ Dream Transcription
-              </Text>
-
-              {isTranscribing && !transcription ? (
-                <View style={styles.transcribing}>
-                  <Text
-                    style={[
-                      styles.transcribingText,
-                      {
-                        color: theme.text,
-                        textShadowColor: theme.primary,
-                        textShadowOffset: { width: 0, height: 0 },
-                        textShadowRadius: 4,
-                      },
-                    ]}
-                  >
-                    🔮 Converting your sacred words to text...
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.dreamTextContainer}>
-                  <Text style={[styles.dreamText, error === "speech_error" && styles.errorText]}>
-                    {displayText}
-                  </Text>
-                </View>
-              )}
-            </View>
+            <TranscriptionArea
+              content={displayText}
+              isTranscribing={isTranscribing && !transcription}
+              isError={error === "speech_error"}
+            />
           )}
         </Animated.View>
 
@@ -325,40 +298,35 @@ export const VoiceRecorder: React.FC = () => {
             style={[
               styles.partialTranscriptionOverlay,
               {
-                opacity: partialOpacity,
+                // Opacity can be animated separately if needed
                 backgroundColor: "rgba(0, 0, 0, 0.9)",
                 borderColor: theme.accent,
+                maxHeight: "80%",
               },
             ]}
           >
-            <Text
-              style={[
-                styles.partialText,
-                {
-                  color: theme.accent,
-                },
-              ]}
+            <ScrollView
+              ref={scrollViewRef}
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1, justifyContent: "flex-end" }}
+              onContentSizeChange={() => scrollViewRef.current?.scrollToEnd({ animated: true })}
             >
-              {partialTranscription}
-            </Text>
+              <Text
+                style={[
+                  styles.partialText,
+                  {
+                    color: theme.accent,
+                  },
+                ]}
+              >
+                {partialTranscription}
+              </Text>
+            </ScrollView>
           </Animated.View>
         )}
 
         {error && error !== "speech_error" && (
-          <View
-            style={[
-              styles.errorContainer,
-              {
-                shadowColor: "#F44336",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-                elevation: 8,
-              },
-            ]}
-          >
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
+          <ErrorContainer message={error} style={styles.partialTranscriptionOverlay} />
         )}
       </View>
 
@@ -373,19 +341,9 @@ export const VoiceRecorder: React.FC = () => {
               },
             ]}
           >
-            <Text
-              style={[
-                styles.completionText,
-                {
-                  color: error === "speech_error" ? "#FF6B6B" : theme.primary,
-                  textShadowColor: error === "speech_error" ? "#F44336" : theme.primary,
-                  textShadowOffset: { width: 0, height: 0 },
-                  textShadowRadius: 6,
-                },
-              ]}
-            >
+            <GlowText variant={error === "speech_error" ? "error" : "primary"} textStyle="status">
               {error === "speech_error" ? "Recording failed" : "Dream transcription complete"}
-            </Text>
+            </GlowText>
 
             {confidence > 0 && error !== "speech_error" && (
               <Text style={styles.bottomConfidenceText}>
@@ -393,7 +351,7 @@ export const VoiceRecorder: React.FC = () => {
               </Text>
             )}
 
-            <View style={styles.bottomButtons}>
+            <ActionGroup>
               <Button
                 title={error === "speech_error" ? "❌ Cannot Save Error" : "💾 Save Dream"}
                 onPress={handleSaveDream}
@@ -409,61 +367,26 @@ export const VoiceRecorder: React.FC = () => {
                 ghost
                 size="large"
               />
-            </View>
+            </ActionGroup>
           </Animated.View>
         ) : (
           <>
-            <View style={styles.statusArea}>
-              <Text
-                style={[
-                  styles.status,
-                  {
-                    color: theme.primary,
-                    textShadowColor: theme.primary,
-                    textShadowOffset: { width: 0, height: 0 },
-                    textShadowRadius: 6,
-                  },
-                ]}
-              >
-                {isRecording
+            <StatusIndicator
+              title={
+                isRecording
                   ? "Listening to your sacred dreams..."
                   : isTranscribing
                     ? "Processing your words..."
-                    : "Touch the sacred geometry to begin"}
-              </Text>
-
-              {isRecording && (
-                <>
-                  <Text
-                    style={[
-                      styles.hint,
-                      {
-                        color: theme.text,
-                        textShadowColor: theme.secondary,
-                        textShadowOffset: { width: 0, height: 0 },
-                        textShadowRadius: 2,
-                      },
-                    ]}
-                  >
-                    Speak naturally. Your words are being captured in real-time.
-                  </Text>
-
-                  <Text
-                    style={[
-                      styles.duration,
-                      {
-                        color: theme.accent,
-                        textShadowColor: theme.accent,
-                        textShadowOffset: { width: 0, height: 0 },
-                        textShadowRadius: 2,
-                      },
-                    ]}
-                  >
-                    {formatDuration(duration)}
-                  </Text>
-                </>
-              )}
-            </View>
+                    : "Touch the sacred geometry to begin"
+              }
+              // subtitle={
+              //   isRecording
+              //     ? "Speak naturally. Your words are being captured in real-time."
+              //     : undefined
+              // }
+              duration={isRecording ? formatDuration(duration) : undefined}
+              variant={isRecording ? "accent" : "primary"}
+            />
 
             <Animated.View
               style={[
@@ -495,145 +418,68 @@ export const VoiceRecorder: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  // The main container fills the space and arranges the top and bottom sections.
   container: {
     flex: 1,
-    padding: 16,
   },
+  // The top section will expand to fill available space.
   topContent: {
     flex: 1,
-    minHeight: 0,
+    width: "100%",
   },
+  // This container also expands and aligns its direct children (the TranscriptionArea component) to the top.
   transcriptionContainer: {
     flex: 1,
+    justifyContent: "flex-start",
   },
+  // The bottom section has a fixed height, ensuring it's always at the bottom.
   bottomHalf: {
-    flex: 1,
+    height: 300, // A fixed height for the controls area
     justifyContent: "center",
     alignItems: "center",
-    paddingBottom: 40,
-  },
-  statusArea: {
-    alignItems: "center",
-    marginBottom: 32,
-    paddingHorizontal: 20,
+    paddingBottom: 20, // Padding at the very bottom of the screen.
   },
   recordingArea: {
     alignItems: "center",
     justifyContent: "center",
-  },
-  status: {
-    fontSize: 18,
-    fontWeight: "600",
-    textAlign: "center",
-    marginBottom: 12,
-    letterSpacing: 0.5,
-  },
-  hint: {
-    fontSize: 14,
-    textAlign: "center",
-    fontStyle: "italic",
-    opacity: 0.9,
-    letterSpacing: 0.3,
-    marginBottom: 8,
-  },
-  duration: {
-    fontSize: 16,
-    textAlign: "center",
-    fontWeight: "600",
-    letterSpacing: 1,
-  },
-  transcriptionArea: {
-    flex: 1,
-    padding: 20,
-    marginBottom: 16,
-    minHeight: 200,
-  },
-  transcriptionTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 16,
-    textAlign: "center",
-  },
-  transcribing: {
-    alignItems: "center",
-    paddingVertical: 24,
-  },
-  transcribingText: {
-    fontSize: 16,
-    textAlign: "center",
-  },
-  dreamTextContainer: {
-    backgroundColor: "rgba(139, 92, 246, 0.1)",
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: "rgba(139, 92, 246, 0.3)",
-  },
-  dreamText: {
-    fontSize: 18,
-    lineHeight: 28,
-    fontWeight: "500",
-    letterSpacing: 0.3,
-    color: "#FFFFFF",
-    textAlign: "left",
-  },
-  errorText: {
-    color: "#FF6B6B",
-    fontStyle: "italic",
-    textAlign: "center",
+    gap: 24, // Space between status and button
+    width: "100%",
   },
   partialTranscriptionOverlay: {
     position: "absolute",
-    bottom: 120,
-    left: 20,
-    right: 20,
+    top: 0,
+    left: 16,
+    right: 16,
+    // backgroundColor: "rgba(0,0,0,0.8)",
     borderRadius: 12,
     padding: 16,
-    borderWidth: 2,
+    borderWidth: 1,
     shadowColor: "#00D4FF",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 5,
+    textAlign: "left",
   },
   partialText: {
     fontSize: 16,
-    textAlign: "center",
+    textAlign: "left",
     fontStyle: "italic",
     fontWeight: "500",
   },
-  errorContainer: {
-    backgroundColor: "rgba(244, 67, 54, 0.2)",
-    borderWidth: 1,
-    borderColor: "#F44336",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
+  // The completion area takes up the full space of the bottom half.
   completionArea: {
     flex: 1,
-    justifyContent: "flex-end",
+    width: "100%",
+    justifyContent: "center",
     alignItems: "center",
-    paddingBottom: 40,
-  },
-  completionText: {
-    fontSize: 18,
-    fontWeight: "600",
-    textAlign: "center",
-    marginBottom: 8,
-    letterSpacing: 0.5,
   },
   bottomConfidenceText: {
     fontSize: 14,
     textAlign: "center",
     color: "#9CA3AF",
     opacity: 0.8,
-    marginBottom: 32,
+    marginVertical: 16, // Consistent vertical spacing
     fontStyle: "italic",
-  },
-  bottomButtons: {
-    width: "100%",
-    paddingHorizontal: 20,
-    gap: 16,
   },
 });
