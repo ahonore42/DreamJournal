@@ -9,6 +9,19 @@ import { theme } from "./Colors";
 // ==================================
 
 /**
+ * Converts a hex color string to an rgba string.
+ * @param {string} hex - The hex color code (e.g., "#RRGGBB").
+ * @param {number} opacity - The opacity value (0 to 1).
+ */
+export const hexToRgba = (hex: string, opacity: number): string => {
+  const hexValue = hex.replace("#", "");
+  const r = parseInt(hexValue.substring(0, 2), 16);
+  const g = parseInt(hexValue.substring(2, 4), 16);
+  const b = parseInt(hexValue.substring(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
+
+/**
  * Creates a surface style with configurable padding, radius, and colors.
  */
 export const createSurface = ({
@@ -29,6 +42,75 @@ export const createSurface = ({
   padding,
   borderWidth,
   borderColor,
+});
+
+export const createTranscriptionArea = (
+  minHeight: number = 200,
+  padding: number = 16,
+): ViewStyle => ({
+  flex: 1,
+  padding,
+  marginBottom: 16,
+  minHeight,
+  alignSelf: "flex-start",
+});
+
+export const createAvatar = (
+  size: number = 50,
+  backgroundColor: string = "rgba(139, 92, 246, 0.2)",
+  borderColor: string = "#8B5CF6",
+  borderWidth: number = 2,
+): ViewStyle => ({
+  width: size,
+  height: size,
+  borderRadius: size / 2,
+  backgroundColor,
+  borderWidth,
+  borderColor,
+  justifyContent: "center",
+  alignItems: "center",
+});
+
+export const createMenuItem = (
+  borderColor: string = theme.primary,
+  backgroundColor: string = "transparent",
+): ViewStyle => ({
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  paddingVertical: 16,
+  paddingHorizontal: 20,
+  borderLeftWidth: 3,
+  borderLeftColor: borderColor,
+  backgroundColor,
+  marginVertical: 2,
+});
+
+export const createCardSurface = (
+  opacity: number = 0.1,
+  borderOpacity: number = 0.3,
+  borderRadius: number = 16,
+  padding: number = 24,
+): ViewStyle => ({
+  backgroundColor: `rgba(139, 92, 246, ${opacity})`,
+  borderRadius,
+  padding,
+  borderWidth: 1,
+  borderColor: `rgba(139, 92, 246, ${borderOpacity})`,
+});
+
+export const createOverlay = (
+  backgroundColor: string = "rgba(0, 0, 0, 0.9)",
+  borderColor: string = theme.accent,
+  borderWidth: number = 2,
+  borderRadius: number = 12,
+  padding: number = 16,
+): ViewStyle => ({
+  backgroundColor,
+  borderColor,
+  borderWidth,
+  borderRadius,
+  padding,
 });
 
 /**
