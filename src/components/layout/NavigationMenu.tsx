@@ -15,6 +15,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StyledText } from "@/components/ui/StyledText";
 import { useAuth } from "@/hooks/useAuth";
 import { theme } from "@/constants/Colors";
+import { MenuItem } from "../ui/MenuItem";
+import { GlowText } from "../ui/GlowText";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 const MENU_WIDTH = SCREEN_WIDTH * 0.8;
@@ -276,9 +278,9 @@ export const NavigationMenu: React.FC<NavigationMenuProps> = ({ isVisible, onClo
 
         {/* Footer */}
         <View style={styles.footer}>
-          <StyledText variant="caption" style={styles.footerText}>
+          <GlowText variant="primary" style={styles.footerText}>
             ✨ DreamJournal v1.0 ✨
-          </StyledText>
+          </GlowText>
           <StyledText variant="caption" style={styles.footerSubtext}>
             Explore the cosmos within
           </StyledText>
@@ -405,7 +407,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   footerText: {
-    color: "#8B5CF6",
     marginBottom: 4,
   },
   footerSubtext: {
